@@ -69,6 +69,8 @@ namespace Robomongo
         FindFrame *_textView;
         BsonTreeView *_bsonTreeview;
         BsonTableView *_bsonTable;
+        QByteArray _bsonTreeHeaderViewState;
+        QByteArray _bsonTableHeaderViewState;
         BsonTreeModel *_mod;
         CollectionStatsTreeWidget *_collectionStats;
 

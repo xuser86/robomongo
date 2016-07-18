@@ -1,6 +1,7 @@
 #include "robomongo/gui/widgets/workarea/OutputItemContentWidget.h"
 
 #include <QVBoxLayout>
+#include <QHeaderView>
 #include <Qsci/qscilexerjavascript.h>
 
 #include "robomongo/core/AppRegistry.h"
@@ -184,12 +185,16 @@ namespace Robomongo
         markUninitialized();
 
         if (_bsonTable) {
+            _bsonTableHeaderViewState = _bsonTable->horizontalHeader()->saveState();
+
             _stack->removeWidget(_bsonTable);
             delete _bsonTable;
             _bsonTable = NULL;
         }
 
         if (_bsonTreeview) {
+            _bsonTreeHeaderViewState = _bsonTreeview->header()->saveState();
+
             _stack->removeWidget(_bsonTreeview);
             delete _bsonTreeview;
             _bsonTreeview = NULL;
@@ -254,6 +259,10 @@ namespace Robomongo
                 _bsonTreeview->expand(_mod->index(0, 0, QModelIndex()));
 
             _isTreeModeInitialized = true;
+
+            if ( _bsonTreeHeaderViewState.size() > 0 ) {
+                _bsonTreeview->header()->restoreState(_bsonTreeHeaderViewState);
+            }
         }
 
         _stack->setCurrentWidget(_bsonTreeview);
@@ -302,6 +311,10 @@ namespace Robomongo
             _bsonTable->setModel(modp);
             _stack->addWidget(_bsonTable);
             _isTableModeInitialized = true;
+
+            if ( _bsonTableHeaderViewState.size() > 0 ) {
+                _bsonTable->horizontalHeader()->restoreState(_bsonTableHeaderViewState);
+            }
         }
 
         _stack->setCurrentWidget(_bsonTable);
