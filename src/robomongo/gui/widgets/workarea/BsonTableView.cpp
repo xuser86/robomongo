@@ -6,6 +6,7 @@
 #include <QKeyEvent>
 
 #include "robomongo/gui/widgets/workarea/BsonTreeItem.h"
+#include "robomongo/gui/widgets/workarea/BsonHeaderView.h"
 #include "robomongo/gui/GuiRegistry.h"
 #include "robomongo/core/utils/QtUtils.h"
 
@@ -27,6 +28,8 @@ namespace Robomongo
         setSelectionBehavior(QAbstractItemView::SelectItems);
         setContextMenuPolicy(Qt::CustomContextMenu);
         VERIFY(connect(this, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(showContextMenu(const QPoint&))));
+        
+        setHorizontalHeader(new BsonHeaderView(Qt::Horizontal,this));
     }
 
     void BsonTableView::keyPressEvent(QKeyEvent *event)

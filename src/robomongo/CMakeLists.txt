@@ -98,6 +98,7 @@ set(SOURCES
     gui/widgets/explorer/ExplorerServerTreeItem.cpp
     gui/widgets/explorer/ExplorerTreeWidget.cpp
     gui/widgets/explorer/ExplorerWidget.cpp
+    gui/widgets/workarea/BsonHeaderView.cpp
     gui/widgets/workarea/BsonTableModel.cpp
     gui/widgets/workarea/BsonTableView.cpp
     gui/widgets/workarea/BsonTreeItem.cpp

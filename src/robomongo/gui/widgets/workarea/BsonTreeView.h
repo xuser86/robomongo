@@ -3,6 +3,7 @@
 #include <QTreeView>
 
 #include "robomongo/core/domain/Notifier.h"
+#include "robomongo/gui/widgets/workarea/BsonHeaderView.h"
 
 namespace Robomongo
 {

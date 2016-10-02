@@ -33,6 +33,9 @@ namespace Robomongo
         VERIFY(connect(_collapseRecursive, SIGNAL(triggered()), SLOT(onCollapseRecursive())));
 
         setStyleSheet("QTreeView { border-left: 1px solid #c7c5c4; border-top: 1px solid #c7c5c4; }");
+        
+        setHeader(new BsonHeaderView(Qt::Horizontal,this));
+        
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
         header()->setSectionResizeMode(QHeaderView::Interactive);
 #endif
@@ -78,7 +81,7 @@ namespace Robomongo
     void BsonTreeView::resizeEvent(QResizeEvent *event)
     {
         BaseClass::resizeEvent(event);
-        header()->resizeSections(QHeaderView::Stretch);
+        //header()->resizeSections(QHeaderView::Stretch);
     }
 
     void BsonTreeView::keyPressEvent(QKeyEvent *event)
