@@ -35,6 +35,7 @@ namespace Robomongo
     R_REGISTER_EVENT(CollectionIndexesLoadingEvent)
     const QString ExplorerCollectionDirIndexesTreeItem::labelText = "Indexes";
 
+/* ------------ Class ExplorerCollectionDirIndexesTreeItem ------------ */
     ExplorerCollectionDirIndexesTreeItem::ExplorerCollectionDirIndexesTreeItem(QTreeWidgetItem *parent)
         :BaseClass(parent)
     {
@@ -200,6 +201,8 @@ namespace Robomongo
         }
     }
 
+
+/* ------------ Class ExplorerCollectionTreeItem ------------ */
     ExplorerCollectionTreeItem::ExplorerCollectionTreeItem(QTreeWidgetItem *parent, ExplorerDatabaseTreeItem *databaseItem, MongoCollection *collection) :
         BaseClass(parent), _collection(collection), _databaseItem(databaseItem)
     {
@@ -267,13 +270,12 @@ namespace Robomongo
         AppRegistry::instance().bus()->subscribe(_databaseItem, LoadCollectionIndexesResponse::Type, this);
         AppRegistry::instance().bus()->subscribe(_databaseItem, DeleteCollectionIndexResponse::Type, this);
         AppRegistry::instance().bus()->subscribe(this, CollectionIndexesLoadingEvent::Type, this);
-        
+
         setText(0, QtUtils::toQString(_collection->name()));
         setIcon(0, GuiRegistry::instance().collectionIcon());
 
         _indexDir = new ExplorerCollectionDirIndexesTreeItem(this);
         addChild(_indexDir);
-//        setToolTip(0, buildToolTip(collection));
 
         setExpanded(false);
         setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);

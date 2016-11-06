@@ -42,6 +42,14 @@ namespace Robomongo
         */
         virtual void reject();
 
+        /**
+        * @brief Add connection to the list widget
+        */
+        void add(ConnectionSettings *connection);
+        
+        // todo: remove
+        void addManually();
+
     protected:
         /**
         * @brief Reimplementing closeEvent in order to do some pre-close actions.
@@ -50,11 +58,6 @@ namespace Robomongo
 
     private Q_SLOTS:
         void linkActivated(const QString &link);
-
-        /**
-         * @brief Add connection to the list widget
-         */
-        void add(ConnectionSettings *connection);
 
         /**
          * @brief Initiate 'add' action, usually when user clicked on Add button

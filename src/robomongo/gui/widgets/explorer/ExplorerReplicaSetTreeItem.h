@@ -21,8 +21,12 @@ namespace Robomongo
         ExplorerReplicaSetTreeItem(QTreeWidgetItem *parent, MongoServer *const server, const mongo::HostAndPort& repMemberHostAndPort,
                                    const bool isPrimary, const bool isUp);
 
+        // todo
+        void updateState(bool isUp, bool isPrimary);
+
         // Getters
-        ConnectionSettings const* connectionSettings() const { return _connSettings.get(); }
+        ConnectionSettings* connectionSettings() { return _connSettings.get(); }
+        bool isUp() const { return _isUp; }
 
     public Q_SLOTS:
         // Todo: remove or update
@@ -41,8 +45,8 @@ namespace Robomongo
 
     private:
         mongo::HostAndPort _repMemberHostAndPort;
-        const bool _isPrimary;
-        const bool _isUp;
+        bool _isPrimary;
+        bool _isUp;
 
         MongoServer *const _server;
         std::unique_ptr<ConnectionSettings> _connSettings;

@@ -8,6 +8,8 @@
 #include "robomongo/core/settings/SslSettings.h"
 #include "robomongo/core/utils/QtUtils.h"
 
+#include <mongo/client/mongo_uri.h>
+
 namespace
 {
     const unsigned port = 27017;
@@ -31,16 +33,47 @@ namespace Robomongo
         _sshSettings(new SshSettings()),
         _sslSettings(new SslSettings()),
         _isReplicaSet(false),
-        _replicaSetSettings(new ReplicaSetSettings())
+        _replicaSetSettings(new ReplicaSetSettings())       // todo: dont create if not replica set
     { }
+
+    ConnectionSettings::ConnectionSettings(const mongo::MongoURI& uri) 
+        : _connectionName(defaultNameConnection),
+        _host(defaultServerHost),
+        _port(port),
+        _imported(false),
+        _sshSettings(new SshSettings()),
+        _sslSettings(new SslSettings()),
+        _isReplicaSet((uri.type() == mongo::ConnectionString::ConnectionType::SET)),
+        _replicaSetSettings(new ReplicaSetSettings(uri))    // todo: dont create if not replica set
+    {
+        if (!uri.getServers().empty()) {
+            _host = uri.getServers().front().host();
+            _port = uri.getServers().front().port();
+        }
+
+        auto str = std::string(uri.getOptions().getStringField("ssl"));
+        auto sslEnabled = ("true" == str);
+        if (sslEnabled) {
+            _sslSettings->enableSSL(true);
+            _sslSettings->setAllowInvalidCertificates(true);
+        }
+
+        auto credential = new CredentialSettings();
+        credential->setUserName(uri.getUser());
+        credential->setUserPassword(uri.getPassword());
+        credential->setDatabaseName(uri.getDatabase());
+        if (!credential->userName().empty() && !credential->userPassword().empty()) {   // todo:
+            credential->setEnabled(true);
+        }
+        addCredential(credential);
+    }
 
     void ConnectionSettings::fromVariant(const QVariantMap &map) {
         setConnectionName(QtUtils::toStdString(map.value("connectionName").toString()));
         setServerHost(QtUtils::toStdString(map.value("serverHost").toString().left(maxLength)));
         setServerPort(map.value("serverPort").toInt());
         setDefaultDatabase(QtUtils::toStdString(map.value("defaultDatabase").toString()));
-        //// Temporarily disable Replica Setet - feature is under development
-        //setReplicaSet(map.value("isReplicaSet").toBool());       
+        setReplicaSet(map.value("isReplicaSet").toBool());       
         
         QVariantList list = map.value("credentials").toList();
         for (QVariantList::const_iterator it = list.begin(); it != list.end(); ++it) {
@@ -57,10 +90,9 @@ namespace Robomongo
             _sslSettings->fromVariant(map.value("ssl").toMap());
         }
 
-        //// Temporarily disable Replica Setet - feature is under development
-        //if (isReplicaSet()) {
-        //    _replicaSetSettings->fromVariant(map.value("replicaSet").toMap());
-        //}
+        if (isReplicaSet()) {
+            _replicaSetSettings->fromVariant(map.value("replicaSet").toMap());
+        }
 
 //#ifdef MONGO_SSL
 //      ,SSLInfo(map.value("sslEnabled").toBool(),QtUtils::toStdString(map.value("sslPemKeyFile").toString()))
@@ -98,8 +130,7 @@ namespace Robomongo
         setServerPort(source->serverPort());
         setDefaultDatabase(source->defaultDatabase());
         setImported(source->imported());
-        //// Temporarily disable Replica Setet - feature is under development
-        //setReplicaSet(source->isReplicaSet());
+        setReplicaSet(source->isReplicaSet());
 
         clearCredentials();
         QList<CredentialSettings *> cred = source->credentials();
@@ -126,11 +157,10 @@ namespace Robomongo
         map.insert("serverHost", QtUtils::toQString(serverHost()));
         map.insert("serverPort", serverPort());
         map.insert("defaultDatabase", QtUtils::toQString(defaultDatabase()));
-        //// Temporarily disable Replica Setet - feature is under development
-        //map.insert("isReplicaSet", isReplicaSet());
-        //if (isReplicaSet()) {
-        //    map.insert("replicaSet", _replicaSetSettings->toVariant());
-        //}
+        map.insert("isReplicaSet", isReplicaSet());
+        if (isReplicaSet()) {
+            map.insert("replicaSet", _replicaSetSettings->toVariant());
+        }
 
 #ifdef MONGO_SSL
         SSLInfo infl = _info.sslInfo();
@@ -176,7 +206,7 @@ namespace Robomongo
      * @brief Checks whether this connection has primary credential
      * which is also enabled.
      */
-    bool ConnectionSettings::hasEnabledPrimaryCredential()
+    bool ConnectionSettings::hasEnabledPrimaryCredential() const
     {
         if (_credentials.count() == 0)
             return false;
@@ -187,7 +217,7 @@ namespace Robomongo
     /**
      * @brief Returns primary credential
      */
-    CredentialSettings *ConnectionSettings::primaryCredential()
+    CredentialSettings *ConnectionSettings::primaryCredential() const
     {
         if (_credentials.count() == 0) {
             _credentials.append(new CredentialSettings());

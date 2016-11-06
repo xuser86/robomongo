@@ -44,6 +44,18 @@ namespace Robomongo
         return importedIcon;
     }
 
+    const QIcon &GuiRegistry::serverPrimaryIcon() const
+    {
+        static const QIcon icon(":/robomongo/icons/server_primary_16x16.png");
+        return icon;
+    }
+
+    const QIcon &GuiRegistry::serverSecondaryIcon() const
+    {
+        static const QIcon icon(":/robomongo/icons/server_secondary_16x16.png");
+        return icon;
+    }
+
     const QIcon &GuiRegistry::replicaSetIcon() const
     {
         static const QIcon replicaSetIc(":/robomongo/icons/replica_set_16x16.png");
@@ -334,6 +346,18 @@ namespace Robomongo
     {
         static const QIcon stopIc = QIcon(":/robomongo/icons/stop_24x24.png");
         return stopIc;
+    }
+
+    const QIcon &GuiRegistry::exportIcon() const
+    {
+        static const QIcon exportIc = QIcon(":/robomongo/icons/export_64x64.png");
+        return exportIc;
+    }
+
+    const QIcon &GuiRegistry::importIcon() const
+    {
+        static const QIcon importIc = QIcon(":/robomongo/icons/import_64x64.png");
+        return importIc;
     }
 
     const QIcon &GuiRegistry::mainWindowIcon() const

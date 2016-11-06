@@ -27,6 +27,9 @@ namespace Robomongo
         typedef std::vector<std::string> DatabasesContainerType;
         explicit MongoWorker(ConnectionSettings *connection, bool isLoadMongoRcJs, int batchSize,
                              int mongoTimeoutSec, int shellTimeoutSec, QObject *parent = NULL);
+        using upDBClientReplicaSet = std::unique_ptr<mongo::DBClientReplicaSet>;
+        using upDBClientConnection = std::unique_ptr<mongo::DBClientConnection>;
+
         ~MongoWorker();
         enum { pingTimeMs = 60 * 1000 };
         void interrupt();
@@ -44,6 +47,11 @@ namespace Robomongo
          * @brief Initiate connection to MongoDB
          */
         void handle(EstablishConnectionRequest *event);
+
+        /**
+        * @brief todo
+        */
+        void handle(RefreshReplicaSetRequest *event);
 
         /**
          * @brief Load list of all database names
@@ -147,6 +155,11 @@ namespace Robomongo
         *@brief Reset global mongo SSL settings (mongo::sslGlobalParams) into default zero state
         */
         void resetGlobalSSLparams() const;
+
+        /**
+        *@brief Update Replica Set related parameters/settings
+        */
+        ReplicaSet getReplicaSetInfo() const;   // todo: throws
 
         /**
          * @brief Send reply event to object 'obj'

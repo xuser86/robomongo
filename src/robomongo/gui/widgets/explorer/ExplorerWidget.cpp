@@ -9,16 +9,18 @@
 #include "robomongo/core/domain/App.h"
 #include "robomongo/core/utils/QtUtils.h"
 
+#include "robomongo/gui/MainWindow.h"
 #include "robomongo/gui/widgets/explorer/ExplorerTreeWidget.h"
 #include "robomongo/gui/widgets/explorer/ExplorerServerTreeItem.h"
 #include "robomongo/gui/widgets/explorer/ExplorerCollectionTreeItem.h"
 #include "robomongo/gui/widgets/explorer/ExplorerDatabaseCategoryTreeItem.h"
 #include "robomongo/gui/widgets/explorer/ExplorerReplicaSetTreeItem.h"
+#include "robomongo/gui/widgets/explorer/ExplorerReplicaSetFolderItem.h"
 
 namespace Robomongo
 {
 
-    ExplorerWidget::ExplorerWidget(QWidget *parent) : BaseClass(parent),
+    ExplorerWidget::ExplorerWidget(MainWindow *parentMainWindow) : BaseClass(parentMainWindow),
         _progress(0)
     {
         _treeWidget = new ExplorerTreeWidget(this);
@@ -28,7 +30,10 @@ namespace Robomongo
         vlaout->addWidget(_treeWidget, Qt::AlignJustify);
 
         VERIFY(connect(_treeWidget, SIGNAL(itemExpanded(QTreeWidgetItem *)), this, SLOT(ui_itemExpanded(QTreeWidgetItem *))));
-        VERIFY(connect(_treeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem *, int)), this, SLOT(ui_itemDoubleClicked(QTreeWidgetItem *, int))));
+        VERIFY(connect(_treeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem *, int)), 
+                       this, SLOT(ui_itemDoubleClicked(QTreeWidgetItem *, int))));
+        VERIFY(connect(_treeWidget, SIGNAL(currentItemChanged(QTreeWidgetItem *, QTreeWidgetItem *)),
+                       parentMainWindow, SLOT(onExplorerItemSelected(QTreeWidgetItem *))));
 
         setLayout(vlaout);
 
@@ -37,6 +42,11 @@ namespace Robomongo
         _progressLabel->setMovie(movie);
         _progressLabel->hide();
         movie->start();        
+    }
+
+    QTreeWidgetItem* ExplorerWidget::getSelectedTreeItem() const
+    {
+        return _treeWidget->currentItem();
     }
 
     void ExplorerWidget::keyPressEvent(QKeyEvent *event)
@@ -109,19 +119,19 @@ namespace Robomongo
 
     void ExplorerWidget::ui_itemExpanded(QTreeWidgetItem *item)
     {
-        ExplorerDatabaseCategoryTreeItem *categoryItem = dynamic_cast<ExplorerDatabaseCategoryTreeItem *>(item);
+        auto categoryItem = dynamic_cast<ExplorerDatabaseCategoryTreeItem *>(item);
         if (categoryItem) {
             categoryItem->expand();
             return;
         }
 
-        ExplorerServerTreeItem *serverItem = dynamic_cast<ExplorerServerTreeItem *>(item);
+        auto serverItem = dynamic_cast<ExplorerServerTreeItem *>(item);
         if (serverItem) {
             serverItem->expand();
             return;
         }
        
-        ExplorerCollectionDirIndexesTreeItem * dirItem = dynamic_cast<ExplorerCollectionDirIndexesTreeItem *>(item);
+        auto dirItem = dynamic_cast<ExplorerCollectionDirIndexesTreeItem *>(item);
         if (dirItem) {
             dirItem->expand();
         }
@@ -136,7 +146,7 @@ namespace Robomongo
         }
 
         auto replicaMemberItem = dynamic_cast<ExplorerReplicaSetTreeItem*>(item);
-        if (replicaMemberItem) {
+        if (replicaMemberItem && replicaMemberItem->isUp()) {
             AppRegistry::instance().app()->openShell(replicaMemberItem->connectionSettings(), ScriptInfo("", true));
             return;
         }

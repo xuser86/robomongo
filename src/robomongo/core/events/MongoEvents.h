@@ -12,6 +12,7 @@
 #include "robomongo/core/events/MongoEventsInfo.h"
 #include "robomongo/core/Event.h"
 #include "robomongo/core/Enums.h"
+#include "robomongo/core/mongodb/ReplicaSet.h"
 
 namespace Robomongo
 {
@@ -48,32 +49,63 @@ namespace Robomongo
         };
 
         EstablishConnectionResponse(QObject *sender, const ConnectionInfo &info, ConnectionType connectionType, 
-                                    const mongo::HostAndPort& repPrimary, const std::vector<bool>& repMembersHealths) :
+                                    const ReplicaSet replicaSet) :
             Event(sender),
             _info(info),
-            connectionType(connectionType),
-            _repPrimary(repPrimary),
-            _repMembersHealths(repMembersHealths)
+            _connectionType(connectionType),
+            _replicaSet(replicaSet)
             {}
 
-        EstablishConnectionResponse(QObject *sender, const EventError &error, ConnectionType connectionType, ErrorReason errorReason) :
+        EstablishConnectionResponse(QObject *sender, const EventError &error, ConnectionType connectionType, 
+                                    ErrorReason errorReason) :
             Event(sender, error),
             _info(),
-            connectionType(connectionType),
-            errorReason(errorReason) {}
+            _connectionType(connectionType),
+            _errorReason(errorReason),
+            _replicaSet()
+        {}
 
-        // Getters
-        const ConnectionInfo &info() const { return _info; }
-        const mongo::HostAndPort& getRepPrimary() const { return _repPrimary; }
-        const std::vector<bool>& getRepMembersHealths() const { return _repMembersHealths; }
+        // Getters - todo: refactor return copy
+        ConnectionInfo info() const { return _info; }
+        ReplicaSet replicaSet() const { return _replicaSet; }
 
         const ConnectionInfo _info;
-        ConnectionType connectionType;
-        ErrorReason errorReason;
-        mongo::HostAndPort _repPrimary;
-        std::vector<bool> _repMembersHealths;    // todo: vector of host and health pair
+        ConnectionType _connectionType;
+        ErrorReason _errorReason;
+        const ReplicaSet _replicaSet;
     };
 
+    struct RefreshReplicaSetRequest : public Event
+    {
+        R_EVENT
+
+        RefreshReplicaSetRequest(QObject *sender) :
+            Event(sender) {}
+    };
+
+    struct RefreshReplicaSetResponse : public Event
+    {
+        R_EVENT
+
+        RefreshReplicaSetResponse(QObject *sender, ReplicaSet replicaSet) :     
+            Event(sender), replicaSet(replicaSet) {}
+         
+        RefreshReplicaSetResponse(QObject *sender, const EventError &error) :
+            Event(sender, error) {}
+
+        ReplicaSet const replicaSet;
+    };
+
+    struct ReplicaSetUpdated : public Event
+    {
+        R_EVENT
+
+        ReplicaSetUpdated(QObject *sender) :
+            Event(sender) {}
+
+        ReplicaSetUpdated(QObject *sender, const EventError &error) :
+            Event(sender, error) {}
+    };
 
     /**
      * @brief LoadDatabaseNames

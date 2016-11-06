@@ -13,6 +13,7 @@ namespace Robomongo
 
     // Messages
     class EstablishConnectionResponse;
+    struct RefreshReplicaSetResponse;
     class LoadDatabaseNamesResponse;
     class InsertDocumentResponse;
     class CreateDatabaseResponse;
@@ -44,6 +45,18 @@ namespace Robomongo
          * @throws MongoException, if fails
          */
         void tryConnect();
+
+        /**
+        * @brief Try to re-connect to MongoDB server in order to refresh connection view.
+        *        Never shown in Explorer and can be used to refresh (via reconnecting) current connection view.
+        *        (i.e. db version, storage engine, current replica set primary, status of replica set etc...)
+        * @throws MongoException, if fails
+        */
+        void tryRefresh();
+
+        // todo
+        void tryRefreshReplicaSet();
+
         bool isConnected()const;
 
         void createDatabase(const std::string &dbName);
@@ -70,12 +83,15 @@ namespace Robomongo
         void loadDatabases();
         MongoWorker *const client() const { return _client; }
 
+        // todo: remove if not used
         // --- Getters ---
-        const mongo::HostAndPort& getRepPrimary() const { return _repPrimary; }
-        const std::vector<bool>& getRepMembersHealths() const { return _repMembersHealths; }
+        std::string getRepSetName() const { return _repSetName; }
+        mongo::HostAndPort getRepPrimary() const { return _repPrimary; }
+        std::vector<std::pair<std::string, bool>> getRepMembersHealths() const { return _repMembersAndHealths; }
 
     protected Q_SLOTS:
         void handle(EstablishConnectionResponse *event);
+        void handle(RefreshReplicaSetResponse *event);
         void handle(LoadDatabaseNamesResponse *event);
         void handle(InsertDocumentResponse *event);
         void handle(RemoveDocumentResponse *event);
@@ -100,9 +116,10 @@ namespace Robomongo
 
         QList<MongoDatabase *> _databases;
 
-        // Replica Set Status
+        // Replica Set Info
+        std::string _repSetName;
         mongo::HostAndPort _repPrimary;
-        std::vector<bool> _repMembersHealths;   // todo: vector of pairs of host and health
+        std::vector<std::pair<std::string, bool>> _repMembersAndHealths;   // todo: vector of pairs of host and health
     };
 
     class MongoServerLoadingDatabasesEvent : public Event

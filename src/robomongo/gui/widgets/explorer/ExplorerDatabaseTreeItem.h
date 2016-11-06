@@ -68,7 +68,7 @@ namespace Robomongo
 
         EventBus *_bus;
         ExplorerDatabaseCategoryTreeItem *_collectionFolderItem;
-        ExplorerDatabaseCategoryTreeItem *_javascriptFolderItem;
+        ExplorerDatabaseCategoryTreeItem *_functionsFolderItem;
         ExplorerDatabaseCategoryTreeItem *_usersFolderItem;
         ExplorerTreeItem *_collectionSystemFolderItem;
         MongoDatabase *const _database;

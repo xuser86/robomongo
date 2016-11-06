@@ -53,6 +53,7 @@ set(SOURCES
     core/domain/App.cpp
     core/mongodb/MongoClient.cpp
     core/mongodb/MongoWorker.cpp
+    core/mongodb/ReplicaSet.cpp
     core/settings/SettingsManager.cpp
     core/AppRegistry.cpp
 
@@ -75,6 +76,8 @@ set(SOURCES
     # Isolated scope #4
     gui/dialogs/PreferencesDialog.cpp
     gui/dialogs/ConnectionsDialog.cpp
+    gui/dialogs/CreateConnectionDialog.cpp
+    gui/dialogs/ExportDialog.cpp
 
     # Isolated scope #5
     gui/editors/PlainJavaScriptEditor.cpp
@@ -86,6 +89,7 @@ set(SOURCES
     # Isolated scope #6
     gui/widgets/explorer/ExplorerCollectionTreeItem.cpp
     gui/widgets/explorer/ExplorerTreeItem.cpp
+    gui/widgets/explorer/ExplorerReplicaSetFolderItem.cpp
     gui/widgets/explorer/ExplorerReplicaSetTreeItem.cpp
     gui/widgets/explorer/ExplorerDatabaseTreeItem.cpp
     gui/widgets/explorer/ExplorerDatabaseCategoryTreeItem.cpp
@@ -127,7 +131,7 @@ set(SOURCES
     gui/dialogs/SSLTab.cpp
     core/settings/SshSettings.cpp
     core/settings/SslSettings.cpp
-	core/settings/ReplicaSetSettings.cpp
+    core/settings/ReplicaSetSettings.cpp
     core/mongodb/SshTunnelWorker.cpp
 
     gui/resources/gui.qrc

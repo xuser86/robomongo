@@ -3,7 +3,10 @@
 #include <QString>
 #include <QVariant>
 #include <QVariantMap>
+
 #include <mongo/client/dbclientinterface.h>
+#include "mongo/client/mongo_uri.h"
+
 #include <boost/algorithm/string.hpp>
 
 namespace Robomongo
@@ -25,6 +28,11 @@ namespace Robomongo
          * @brief Creates ConnectionSettings with default values
          */
         ConnectionSettings();
+        
+        /**
+        * @brief Creates ConnectionSettings from mongo connection string URI
+        */
+        ConnectionSettings(const mongo::MongoURI& uri);
 
         explicit ConnectionSettings(QVariantMap map);
 
@@ -93,12 +101,12 @@ namespace Robomongo
          * @brief Checks whether this connection has primary credential
          * which is also enabled.
          */
-        bool hasEnabledPrimaryCredential();
+        bool hasEnabledPrimaryCredential() const;
 
         /**
          * @brief Returns primary credential
          */
-        CredentialSettings *primaryCredential();
+        CredentialSettings *primaryCredential() const;
 
         /**
          * @brief Returns number of credentials
@@ -165,7 +173,7 @@ namespace Robomongo
         std::string _host;
         int _port;
         std::string _defaultDatabase;
-        QList<CredentialSettings *> _credentials;
+        mutable QList<CredentialSettings *> _credentials;
         SshSettings *_sshSettings;
         SslSettings *_sslSettings;
         bool _isReplicaSet;

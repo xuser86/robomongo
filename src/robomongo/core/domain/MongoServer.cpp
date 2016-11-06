@@ -4,6 +4,7 @@
 #include "robomongo/core/settings/ConnectionSettings.h"
 #include "robomongo/core/settings/SshSettings.h"
 #include "robomongo/core/settings/SettingsManager.h"
+#include "robomongo/core/settings/ReplicaSetSettings.h"
 #include "robomongo/core/mongodb/MongoWorker.h"
 #include "robomongo/core/mongodb/SshTunnelWorker.h"
 #include "robomongo/core/AppRegistry.h"
@@ -43,18 +44,27 @@ namespace Robomongo {
         // another thread (call to moveToThread() made in MongoWorker constructor).
         // It will be deleted by this thread by means of "deleteLater()", which
         // is also specified in MongoWorker constructor.
-
-        delete _settings;
     }
 
     /**
      * @brief Try to connect to MongoDB server.
      * @throws MongoException, if fails
      */
-    void MongoServer::tryConnect() {
+    void MongoServer::tryConnect() 
+    {
         _bus->send(_client, new EstablishConnectionRequest(this, _connectionType));
     }
 
+    void MongoServer::tryRefresh() 
+    {
+        _bus->send(_client, new EstablishConnectionRequest(this, ConnectionRefresh));
+    }
+
+    void MongoServer::tryRefreshReplicaSet()
+    {
+        _bus->send(_client, new RefreshReplicaSetRequest(this));
+    }
+    
     QStringList MongoServer::getDatabasesNames() const {
         QStringList result;
         for (QList<MongoDatabase *>::const_iterator it = _databases.begin(); it != _databases.end(); ++it) {
@@ -126,7 +136,7 @@ namespace Robomongo {
             _isConnected = false;
 
             std::stringstream ss("Unknown error");
-            auto eventErrorReason = event->errorReason;
+            auto eventErrorReason = event->_errorReason;
             if (EstablishConnectionResponse::ErrorReason::MongoSslConnection == eventErrorReason)
             {
                 auto reason = ConnectionFailedEvent::SslConnection;
@@ -160,18 +170,33 @@ namespace Robomongo {
         _version = info._version;
         _storageEngineType = info._storageEngineType;
         _isConnected = true;
+        // todo: move to func
         // Save Replica Set Status  
-        _repPrimary = event->getRepPrimary();                   // todo: what happens to this member if not replica set?
-        _repMembersHealths = event->getRepMembersHealths();
+        //_repSetName = event->getRepSetName();
+        _repPrimary = event->replicaSet().primary;                   // todo: what happens to this member if not replica set?
+        _repMembersAndHealths = event->replicaSet().membersAndHealths;
         if (_settings->isReplicaSet()) {
             _settings->setServerHost(_repPrimary.host());
             _settings->setServerPort(_repPrimary.port());
+            _settings->replicaSetSettings()->setSetName(event->replicaSet().setName);
+            std::vector<std::string> members;
+            for (auto const& memberAndHealth : event->replicaSet().membersAndHealths) {
+                members.push_back(memberAndHealth.first);
+            }
+            _settings->replicaSetSettings()->setMembers(members);
+            // Save replica set settings
+            AppRegistry::instance().settingsManager()->save();
         }
+
+        // ConnectionRefresh is used just to update connection view (_version, _storageEngineType, _repPrimary etc..)
+        // So we return here after updating(refreshing) information related to connection view.
+        if (ConnectionRefresh == event->_connectionType)
+            return;
 
         _bus->publish(new ConnectionEstablishedEvent(this, _connectionType));
 
         // Do nothing if this is not a "primary" connection
-        if (_connectionType != ConnectionPrimary)
+        if (ConnectionPrimary != _connectionType)
             return;
 
         clearDatabases();
@@ -180,6 +205,31 @@ namespace Robomongo {
             MongoDatabase *db  = new MongoDatabase(this, name);
             addDatabase(db);
         }
+    }
+
+    void MongoServer::handle(RefreshReplicaSetResponse *event)
+    {
+        if (event->isError()) {
+            _bus->publish(new ReplicaSetUpdated(this, event->error()));
+            return;
+        }
+
+        _repPrimary = event->replicaSet.primary;                   // todo: what happens to this member if not replica set?
+        _repMembersAndHealths = event->replicaSet.membersAndHealths;
+        if (_settings->isReplicaSet()) {
+            _settings->setServerHost(_repPrimary.host());
+            _settings->setServerPort(_repPrimary.port());
+            _settings->replicaSetSettings()->setSetName(event->replicaSet.setName);
+            std::vector<std::string> members;
+            for (auto const& memberAndHealth : event->replicaSet.membersAndHealths) {
+                members.push_back(memberAndHealth.first);
+            }
+            _settings->replicaSetSettings()->setMembers(members);
+            // Save replica set settings
+            AppRegistry::instance().settingsManager()->save();
+        }
+
+        _bus->publish(new ReplicaSetUpdated(this));
     }
 
     void MongoServer::handle(LoadDatabaseNamesResponse *event) {

@@ -30,6 +30,8 @@ namespace Robomongo
          */
         const QIcon& serverIcon() const;
         const QIcon& serverImportedIcon() const;
+        const QIcon& serverPrimaryIcon() const;
+        const QIcon& serverSecondaryIcon() const;
         const QIcon& replicaSetIcon() const;
         const QIcon& saveIcon() const;
         const QIcon& openIcon() const;
@@ -60,6 +62,8 @@ namespace Robomongo
         const QIcon& connectIcon() const;
         const QIcon& executeIcon() const;
         const QIcon& stopIcon() const;
+        const QIcon& exportIcon() const;
+        const QIcon& importIcon() const;
         const QIcon& mainWindowIcon() const;
         const QIcon& bsonObjectIcon() const;
         const QIcon& bsonArrayIcon() const;

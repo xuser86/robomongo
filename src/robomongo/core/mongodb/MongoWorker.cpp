@@ -19,6 +19,7 @@
 #include "robomongo/core/settings/CredentialSettings.h"
 #include "robomongo/core/settings/SettingsManager.h"
 #include "robomongo/core/settings/SslSettings.h"
+#include "robomongo/core/utils/BsonUtils.h"
 #include "robomongo/core/utils/Logger.h"
 #include "robomongo/core/utils/QtUtils.h"
 
@@ -26,7 +27,7 @@ namespace Robomongo
 {
     MongoWorker::MongoWorker(ConnectionSettings *connection, bool isLoadMongoRcJs, int batchSize,
                              int mongoTimeoutSec, int shellTimeoutSec, QObject *parent) : QObject(parent),
-        _scriptEngine(NULL),
+        _scriptEngine(nullptr),
         _isAdmin(true),
         _isLoadMongoRcJs(isLoadMongoRcJs),
         _batchSize(batchSize),
@@ -53,8 +54,7 @@ namespace Robomongo
             return;
         }
 
-        if (_dbAutocompleteCacheTimerId == event->timerId() &&
-            _scriptEngine != NULL) {
+        if (_dbAutocompleteCacheTimerId == event->timerId() && !_scriptEngine) {
             _scriptEngine->invalidateDbCollectionsCache();
             return;
         }
@@ -87,8 +87,9 @@ namespace Robomongo
 
     void MongoWorker::init()
     {        
+        // todo: if (_initialized) return;
         try {
-            _scriptEngine = new ScriptEngine(_connSettings, _shellTimeoutSec);
+            _scriptEngine = new ScriptEngine(_connSettings, _shellTimeoutSec);  // todo: unique_ptr.reset()
             _scriptEngine->init(_isLoadMongoRcJs);
             _scriptEngine->use(_connSettings->defaultDatabase());
             _scriptEngine->setBatchSize(_batchSize);
@@ -139,8 +140,11 @@ namespace Robomongo
         QMutexLocker lock(&_firstConnectionMutex);
 
         try {
+            // Init MongoWorker
+            init();
+            
             mongo::DBClientBase *conn = getConnection(true);
-            if (conn == NULL) {
+            if (!conn) {
                 // Protection by default value: Logically/ideally, this error should never be seen.
                 auto errorReason = std::string("Connection failure: Unknown error.");
                 if (_connSettings->sslSettings()->sslEnabled())
@@ -156,10 +160,17 @@ namespace Robomongo
 
                 resetGlobalSSLparams();
 
-                reply(event->sender(), new EstablishConnectionResponse(this,
-                    EventError(errorReason), event->connectionType,
-                    EstablishConnectionResponse::MongoConnection));
+                reply(event->sender(), new EstablishConnectionResponse(this, EventError(errorReason), event->connectionType, 
+                                                                       EstablishConnectionResponse::MongoConnection));
                 return;
+            }
+
+            ReplicaSet repSetInfo = getReplicaSetInfo(); // todo:
+            if (_connSettings->isReplicaSet())
+            {
+                //repSetInfo = getReplicaSetInfo();
+                _connSettings->setServerHost(repSetInfo.primary.host());
+                _connSettings->setServerPort(repSetInfo.primary.port());
             }
 
             if (_connSettings->hasEnabledPrimaryCredential()) {
@@ -191,34 +202,12 @@ namespace Robomongo
             if (dbNames.size() == 0)
                 throw mongo::DBException("Failed to execute \"listdatabases\" command.", 0);
 
-            // todo: move to func. getRepSetStatus();
-            mongo::HostAndPort repPrimary;
-            std::vector<bool> repMembersHealths;
-            if (_connSettings->isReplicaSet()) 
-            {
-                // Refresh view of Replica Set Monitor to get live data
-                auto repSetMonitor = mongo::globalRSMonitorManager.getMonitor(_dbclientRepSet->getSetName());
-                repSetMonitor->startOrContinueRefresh().refreshAll();
-
-                // Update connection settings with primary(master) address and port
-                repPrimary = repSetMonitor->getMasterOrUassert();
-                _connSettings->setServerHost(repPrimary.host());
-                _connSettings->setServerPort(repPrimary.port());
-
-                // Save health of members
-                for (auto const& member : _connSettings->replicaSetSettings()->membersToHostAndPort()) 
-                {
-                    repMembersHealths.push_back(repSetMonitor->isHostUp(member));
-                }
-            }
-
-            // Init MongoWorker
-            init();
-
             resetGlobalSSLparams();
 
-            reply(event->sender(), new EstablishConnectionResponse(this, ConnectionInfo(_connSettings->getFullAddress(), 
-                dbNames, client->getVersion(), client->getStorageEngineType()), event->connectionType, repPrimary, repMembersHealths));
+            // todo: wrap rep. parameters into a struct
+            auto connInfo = ConnectionInfo(_connSettings->getFullAddress(), dbNames, client->getVersion(), 
+                                           client->getStorageEngineType());
+            reply(event->sender(), new EstablishConnectionResponse(this, connInfo, event->connectionType, repSetInfo));
         } catch(const std::exception &ex) {
             resetGlobalSSLparams();
 
@@ -228,6 +217,21 @@ namespace Robomongo
 
             reply(event->sender(), 
                 new EstablishConnectionResponse(this, EventError(ex.what()), event->connectionType, errorReason));
+        }
+    }
+
+    void MongoWorker::handle(RefreshReplicaSetRequest *event)
+    {
+        if (!_connSettings->isReplicaSet())  // todo
+            return;
+                
+        try {
+            ReplicaSet replicaSet = getReplicaSetInfo();
+            reply(event->sender(), new RefreshReplicaSetResponse(this, replicaSet));
+        }
+        catch (const std::exception &ex) {
+            reply(event->sender(), new RefreshReplicaSetResponse(this, EventError(ex.what())));
+            LOG_MSG(ex.what(), mongo::logger::LogSeverity::Error());
         }
     }
 
@@ -459,9 +463,24 @@ namespace Robomongo
                 return;
             }
 
+            // If this is replica set, update script engine's server address
+            if (_connSettings->isReplicaSet()) {
+                // Refresh view of Replica Set Monitor to get latest status
+                auto repSetMonitor = mongo::globalRSMonitorManager.getMonitor(_dbclientRepSet->getSetName());
+                repSetMonitor->startOrContinueRefresh().refreshAll();
+
+                // Update connection settings with primary(master) address and port
+                mongo::HostAndPort repPrimary = repSetMonitor->getMasterOrUassert();
+
+                // Update script engine with primary node
+                _scriptEngine->init(_isLoadMongoRcJs, repPrimary.toString());
+            }
+
             MongoShellExecResult result = _scriptEngine->exec(event->script, event->databaseName);
+
             reply(event->sender(), new ExecuteScriptResponse(this, result, event->script.empty()));
-        } catch(const mongo::DBException &ex) {
+        } 
+        catch(const mongo::DBException &ex) {
             reply(event->sender(), new ExecuteScriptResponse(this, EventError(ex.what())));
             LOG_MSG(ex.what(), mongo::logger::LogSeverity::Error());
         }
@@ -679,12 +698,49 @@ namespace Robomongo
             mongo::sslGlobalParams.sslMode.store(mongo::SSLParams::SSLMode_allowSSL);
         }
 
-        // --- Perform connection ---
-        if (_connSettings->isReplicaSet()) {  // connection to replica set 
-            if (!_dbclientRepSet) {
-                _dbclientRepSet = std::unique_ptr<mongo::DBClientReplicaSet>(
-                    // todo: where to get name of replica? (i.e. repset) - todo: this if causes crash after app close
-                    new mongo::DBClientReplicaSet("repset",_connSettings->replicaSetSettings()->membersToHostAndPort(), _mongoTimeoutSec));
+        // --- Perform connection attempt ---
+        if (_connSettings->isReplicaSet()) // connection to replica set 
+        {  
+            if (!_dbclientRepSet) 
+            {
+                // Step-1: Retrieve set name if we do not have it
+                std::string setName = _connSettings->replicaSetSettings()->setName();
+                // todo: move to func. "getSetName()"
+                // If set name doesn't exist in the settings, get it from an on-line replica node
+                if (setName.empty())
+                {
+                    auto dbclientTemp = upDBClientConnection(new mongo::DBClientConnection(true, 10));
+
+                    // Try connecting to the nodes one by one until getting replica set name.
+                    for (auto const& node : _connSettings->replicaSetSettings()->membersToHostAndPort())
+                    {
+                        mongo::Status const status = dbclientTemp->connect(node);
+                        if (status.isOK())
+                        {
+                            _scriptEngine->init(_isLoadMongoRcJs, node.toString());
+                            MongoShellExecResult result = _scriptEngine->exec("rs.status()", "");
+                            if (!result.results().empty())
+                            {
+                                auto resultDocs = result.results().front().documents();
+                                if (!resultDocs.empty())
+                                {
+                                    setName = resultDocs.front()->bsonObj().getStringField("set");
+                                    if (!setName.empty()) // We get the information, finish the loop
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (setName.empty()) {  // It is not possible to continue with empty set name
+                    return nullptr;
+                }
+
+                // Step-2: We have the set name, try connect to replica set
+                auto const& membersHostsAndPorts = _connSettings->replicaSetSettings()->membersToHostAndPort();
+                _dbclientRepSet = upDBClientReplicaSet(new mongo::DBClientReplicaSet(setName, membersHostsAndPorts, 
+                                                       _mongoTimeoutSec));
 
                 bool const connStatus = _dbclientRepSet->connect();
                 
@@ -698,7 +754,7 @@ namespace Robomongo
             if (!_dbclient) {
                 // Timeout for operations
                 // Connect timeout is fixed, but short, at 5 seconds (see headers for DBClientConnection)
-                _dbclient = std::unique_ptr<mongo::DBClientConnection>(new mongo::DBClientConnection(true, _mongoTimeoutSec));
+                _dbclient = upDBClientConnection(new mongo::DBClientConnection(true, _mongoTimeoutSec));
 
                 mongo::Status status = _dbclient->connect(_connSettings->info());
 
@@ -744,6 +800,44 @@ namespace Robomongo
         mongo::sslGlobalParams.sslPEMKeyPassword = "";
         mongo::sslGlobalParams.sslCRLFile = "";
         mongo::sslGlobalParams.sslAllowInvalidHostnames = false;
+    }
+
+    ReplicaSet MongoWorker::getReplicaSetInfo() const
+    {
+        if (!_connSettings->isReplicaSet()) // todo
+            return ReplicaSet{};
+
+        std::string repSetName;
+        mongo::HostAndPort repPrimary;
+        std::vector<std::pair<std::string, bool>> repMembersAndHealths;
+
+        // Refresh view of Replica Set Monitor to get live data
+        auto repSetMonitor = mongo::globalRSMonitorManager.getMonitor(_dbclientRepSet->getSetName());
+        repSetMonitor->startOrContinueRefresh().refreshAll();
+
+        repSetName = repSetMonitor->getName();
+
+        // Update connection settings with primary(master) address and port
+        repPrimary = repSetMonitor->getMasterOrUassert();
+
+        // Update script engine with primary node
+        _scriptEngine->init(_isLoadMongoRcJs, repPrimary.toString());
+
+        // i.e. "repset/localhost:27017,localhost:27018,localhost:27019"
+        QStringList servers;
+        auto fullAddress = QString::fromStdString(repSetMonitor->getServerAddress());
+        QStringList result = fullAddress.split("/");
+        if (result.size() > 1) {
+            servers = result[1].split(",");
+        }
+
+        // Save address and health of members
+        for (QString const& server : servers)
+        {
+            auto hostAndPort = mongo::HostAndPort(mongo::StringData(server.toStdString()));
+            repMembersAndHealths.push_back({ server.toStdString(), repSetMonitor->isHostUp(hostAndPort) });
+        }
+        return ReplicaSet(repSetName, repPrimary, repMembersAndHealths);
     }
 
     /**

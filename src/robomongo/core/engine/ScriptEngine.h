@@ -18,7 +18,7 @@ namespace Robomongo
         ScriptEngine(ConnectionSettings *connection, int timeoutSec);
         ~ScriptEngine();
 
-        void init(bool isLoadMongoJs);
+        void init(bool isLoadMongoJs, const std::string& serverAddr = "");
         MongoShellExecResult exec(const std::string &script, const std::string &dbName = std::string());
         void interrupt();
 
@@ -42,7 +42,7 @@ namespace Robomongo
 
         int _timeoutSec;
         mongo::ScriptEngine *_engine;
-        mongo::Scope *_scope;
+        std::unique_ptr<mongo::Scope> _scope;
         QMutex _mutex;
         bool _initialized;
     };

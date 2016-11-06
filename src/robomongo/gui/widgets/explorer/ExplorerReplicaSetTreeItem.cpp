@@ -21,7 +21,7 @@
 namespace
 {
     // todo : modify or move to a common header
-     void openCurrentServerShell(Robomongo::ConnectionSettings const *connSettings, const QString &script)
+     void openCurrentServerShell(Robomongo::ConnectionSettings* connSettings, const QString &script)
      {
          auto const scriptStr = Robomongo::ScriptInfo(script, true);
          Robomongo::AppRegistry::instance().app()->openShell(connSettings, scriptStr);
@@ -41,33 +41,33 @@ namespace Robomongo
         _bus(AppRegistry::instance().bus())
     { 
         // Set connection settings of this replica member
-        _connSettings->setConnectionName(_repMemberHostAndPort.toString() + " - [member of " + _connSettings->connectionName() + "]");
+        _connSettings->setConnectionName(_repMemberHostAndPort.toString() + " [member of " + _connSettings->connectionName() + "]");
         _connSettings->setServerHost(_repMemberHostAndPort.host());
         _connSettings->setServerPort(_repMemberHostAndPort.port());
         _connSettings->setReplicaSet(false);  
         _connSettings->replicaSetSettings()->setMembers(std::vector<std::string>()); // todo: replicaSetSettings->clear()
 
         // Add Actions
-        QAction *openShellAction = new QAction("Open Shell", this);
+        auto openShellAction = new QAction("Open Shell", this);
         openShellAction->setIcon(GuiRegistry::instance().mongodbIcon());
         VERIFY(connect(openShellAction, SIGNAL(triggered()), SLOT(ui_openShell())));
 
-        QAction *openDirectConnection = new QAction("Open Direct Connection", this);
+        auto openDirectConnection = new QAction("Open Direct Connection", this);
         VERIFY(connect(openDirectConnection, SIGNAL(triggered()), SLOT(ui_openDirectConnection())));
 
-        QAction *refreshServer = new QAction("Refresh", this);
+        auto refreshServer = new QAction("Refresh", this);
         VERIFY(connect(refreshServer, SIGNAL(triggered()), SLOT(ui_refreshServer())));
 
-        QAction *serverStatus = new QAction("Server Status", this);
+        auto serverStatus = new QAction("Server Status", this);
         VERIFY(connect(serverStatus, SIGNAL(triggered()), SLOT(ui_serverStatus())));
 
-        QAction *serverVersion = new QAction("MongoDB Version", this);
+        auto serverVersion = new QAction("MongoDB Version", this);
         VERIFY(connect(serverVersion, SIGNAL(triggered()), SLOT(ui_serverVersion())));
 
-        QAction *serverHostInfo = new QAction("Host Info", this);
+        auto serverHostInfo = new QAction("Host Info", this);
         VERIFY(connect(serverHostInfo, SIGNAL(triggered()), SLOT(ui_serverHostInfo())));        
 
-        QAction *showLog = new QAction("Show Log", this);
+        auto showLog = new QAction("Show Log", this);
         VERIFY(connect(showLog, SIGNAL(triggered()), SLOT(ui_showLog()))); 
 
         BaseClass::_contextMenu->addAction(openShellAction);
@@ -80,16 +80,34 @@ namespace Robomongo
         BaseClass::_contextMenu->addSeparator();
         BaseClass::_contextMenu->addAction(showLog);
 
+        //BaseClass::_contextMenu->setHidden(!_isUp);
+
         // Todo: remove ?
         //_bus->subscribe(this, DatabaseListLoadedEvent::Type, _server);
         //_bus->subscribe(this, MongoServerLoadingDatabasesEvent::Type, _server);
 
-        auto status = _isPrimary ? "Primary" : "Secondary";
-        auto health = _isUp ? "Up" : "Down";
-        setText(0, QString::fromStdString(_repMemberHostAndPort.toString()) + " - [" + status + "] [" + health + "]");
-        setIcon(0, GuiRegistry::instance().serverIcon());
+        updateState(_isUp, _isPrimary);
+
         setExpanded(true);
-        setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+        setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicator);
+    }
+
+    void ExplorerReplicaSetTreeItem::updateState(bool isUp, bool isPrimary)
+    {
+        _isUp = isUp;
+        _isPrimary = isPrimary;
+
+        QString stateStr("[Unknown]");
+        if (!_isUp) {
+            stateStr = "[Not Reachable]";
+        }
+        else {
+            stateStr = _isPrimary ? "[Primary]" : "[Secondary]";
+        }
+        setDisabled(_isUp ? false : true);
+        setText(0, QString::fromStdString(_repMemberHostAndPort.toString()) + " " + stateStr);
+        setIcon(0, _isPrimary ? GuiRegistry::instance().serverPrimaryIcon()                               
+                              : GuiRegistry::instance().serverSecondaryIcon());
     }
 
     void ExplorerReplicaSetTreeItem::ui_serverHostInfo()

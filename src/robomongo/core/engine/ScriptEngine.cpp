@@ -57,7 +57,7 @@ namespace Robomongo
 {
     ScriptEngine::ScriptEngine(ConnectionSettings *connection, int timeoutSec) :
         _connection(connection),
-        _scope(NULL),
+        _scope(nullptr),
         _engine(NULL),
         _timeoutSec(timeoutSec),
         _initialized(false),
@@ -65,16 +65,9 @@ namespace Robomongo
 
     ScriptEngine::~ScriptEngine()
     {
-        QMutexLocker lock(&_mutex);
-
-        delete _scope;
-        _scope = NULL;
-
-//        delete _engine;
-//        _engine = NULL;
     }
 
-    void ScriptEngine::init(bool isLoadMongoRcJs)
+    void ScriptEngine::init(bool isLoadMongoRcJs, const std::string& serverAddr)
     {
         QMutexLocker lock(&_mutex);
 
@@ -84,7 +77,8 @@ namespace Robomongo
             connectDatabase = _connection->primaryCredential()->databaseName();
 
         std::stringstream ss;
-        ss << "db = connect('" << _connection->info().toString() << "/" << connectDatabase;
+        auto hostAndPort = serverAddr.empty() ? _connection->info().toString() : serverAddr;
+        ss << "db = connect('" << hostAndPort << "/" << connectDatabase;
 
 //        v0.9
 //        ss << "db = connect('" << _connection->serverHost() << ":" << _connection->serverPort() << _connection->sslInfo() << _connection->sshInfo() << "/" << connectDatabase;
@@ -108,22 +102,21 @@ namespace Robomongo
             mongo::globalScriptEngine->setScopeInitCallback(mongo::shell_utils::initScope);
             mongo::globalScriptEngine->enableJIT(true);
 
-            mongo::Scope *scope = mongo::globalScriptEngine->newScope();
-            _scope = scope;
+            _scope.reset(mongo::globalScriptEngine->newScope());
             _engine = mongo::globalScriptEngine;
 
             // Load '.mongorc.js' from user's home directory
             if (isLoadMongoRcJs) {
                 QString mongorcPath = QString("%1/.mongorc.js").arg(QDir::homePath());
                 if (QFile::exists(mongorcPath)) {
-                    scope->execFile(QtUtils::toStdString(mongorcPath), false, false);
+                    _scope->execFile(QtUtils::toStdString(mongorcPath), false, false);
                 }
             }
 
             // Load '.robomongorc.js'
             QString robomongorcPath = QString("%1/.robomongorc.js").arg(QDir::homePath());
             if (QFile::exists(robomongorcPath)) {
-                scope->execFile(QtUtils::toStdString(robomongorcPath), false, false);
+                _scope->execFile(QtUtils::toStdString(robomongorcPath), false, false);
             }
         }
 
@@ -265,6 +258,9 @@ namespace Robomongo
 
     void ScriptEngine::ping()
     {
+        if (!_scope)
+            return;
+
         QMutexLocker lock(&_mutex);
         _scope->exec("if (db) { db.runCommand({ping:1}); }", "(ping)", false, false, false, 3000);
     }
