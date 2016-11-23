@@ -7,6 +7,7 @@
 #include "robomongo/core/domain/MongoServer.h"
 #include "robomongo/core/domain/App.h"
 #include "robomongo/core/AppRegistry.h"
+#include "robomongo/core/EventBus.h"
 #include "robomongo/core/utils/QtUtils.h"
 #include "robomongo/gui/GuiRegistry.h"
 
@@ -38,9 +39,11 @@ namespace Robomongo
         BaseClass::_contextMenu->addSeparator();
         BaseClass::_contextMenu->addAction(refresh);
 
+        AppRegistry::instance().bus()->subscribe(this, ReplicaSetFolderLoading::Type, _server);
+
         setIcon(0, GuiRegistry::instance().folderIcon());
         // todo: use repSize()
-        setText(0, "Replica Set (" + QString::number(_server->getRepMembersHealths().size()) + " nodes)");
+        setText(0, "Replica Set (" + QString::number(_server->replicaSetInfo()->membersAndHealths.size()) + " nodes)");
 
         setExpanded(false);
         setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
@@ -48,7 +51,7 @@ namespace Robomongo
 
     void ExplorerReplicaSetFolderItem::updateText()
     {
-        setText(0, "Replica Set (" + QString::number(_server->getRepMembersHealths().size()) + " nodes)");
+        setText(0, "Replica Set (" + QString::number(_server->replicaSetInfo()->membersAndHealths.size()) + " nodes)");
     }
 
     void ExplorerReplicaSetFolderItem::on_repSetStatus()
@@ -56,13 +59,14 @@ namespace Robomongo
         openCurrentServerShell(_server, "rs.status()");
     }
 
+    void ExplorerReplicaSetFolderItem::handle(ReplicaSetFolderLoading *event)
+    {
+        setText(0, "Replica Set ...");
+    }
+
     void ExplorerReplicaSetFolderItem::on_refresh()
     {
-        setText(0, "Replica Set (...)");
-        
-        //_server->tryRefresh();      // todo: is it needed?
-        _server->tryRefreshReplicaSet();
-        //_server->loadDatabases();   // todo: refactor
+        _server->tryRefreshReplicaSetFolder();
     }
 }
 

@@ -1,4 +1,4 @@
-About Robomongo
+About Robomongo [![Join the chat at https://gitter.im/paralect/robomongo](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/paralect/robomongo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 ===============
 
 [Robomongo](http://www.robomongo.org) is a shell-centric cross-platform MongoDB management tool. Unlike most other MongoDB admin UI tools, Robomongo embeds the actual `mongo` shell in a tabbed interface with access to a shell command line as well as GUI interaction.
@@ -89,7 +89,7 @@ You can:
 
  - [Create a new issue in the Github issue queue](https://github.com/paralect/robomongo/issues)
 
- - [Join developer discussion on Gitter](https://gitter.im/paralect/robomongo) [![Join the chat at https://gitter.im/paralect/robomongo](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/paralect/robomongo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+ - [Join developer discussion on Gitter](https://gitter.im/paralect/robomongo)
 
 Build
 =====

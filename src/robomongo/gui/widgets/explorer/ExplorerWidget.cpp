@@ -32,8 +32,10 @@ namespace Robomongo
         VERIFY(connect(_treeWidget, SIGNAL(itemExpanded(QTreeWidgetItem *)), this, SLOT(ui_itemExpanded(QTreeWidgetItem *))));
         VERIFY(connect(_treeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem *, int)), 
                        this, SLOT(ui_itemDoubleClicked(QTreeWidgetItem *, int))));
-        VERIFY(connect(_treeWidget, SIGNAL(currentItemChanged(QTreeWidgetItem *, QTreeWidgetItem *)),
-                       parentMainWindow, SLOT(onExplorerItemSelected(QTreeWidgetItem *))));
+
+        // Temporarily disabling export/import feature
+        //VERIFY(connect(_treeWidget, SIGNAL(currentItemChanged(QTreeWidgetItem *, QTreeWidgetItem *)),
+        //               parentMainWindow, SLOT(onExplorerItemSelected(QTreeWidgetItem *))));
 
         setLayout(vlaout);
 
@@ -106,7 +108,7 @@ namespace Robomongo
 
         decreaseProgress();
 
-        ExplorerServerTreeItem *item = new ExplorerServerTreeItem(_treeWidget, event->server);
+        auto item = new ExplorerServerTreeItem(_treeWidget, event->server, event->connInfo);
         _treeWidget->addTopLevelItem(item);
         _treeWidget->setCurrentItem(item);
         _treeWidget->setFocus();

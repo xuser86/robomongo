@@ -57,12 +57,12 @@ namespace Robomongo
             {}
 
         EstablishConnectionResponse(QObject *sender, const EventError &error, ConnectionType connectionType, 
-                                    ErrorReason errorReason) :
+                                    const ReplicaSet replicaSet, ErrorReason errorReason) :
             Event(sender, error),
             _info(),
             _connectionType(connectionType),
             _errorReason(errorReason),
-            _replicaSet()
+            _replicaSet(replicaSet)
         {}
 
         // Getters - todo: refactor return copy
@@ -87,23 +87,67 @@ namespace Robomongo
     {
         R_EVENT
 
-        RefreshReplicaSetResponse(QObject *sender, ReplicaSet replicaSet) :     
+        // Primary is reachable
+        RefreshReplicaSetResponse(QObject *sender, ReplicaSet replicaSet) :
             Event(sender), replicaSet(replicaSet) {}
-         
-        RefreshReplicaSetResponse(QObject *sender, const EventError &error) :
-            Event(sender, error) {}
+
+        // Primary is unreachable and secondary(ies) might be reachable
+        RefreshReplicaSetResponse(QObject *sender, ReplicaSet replicaSet, const EventError &error) :
+            Event(sender, error), replicaSet(replicaSet) {}
 
         ReplicaSet const replicaSet;
     };
 
-    struct ReplicaSetUpdated : public Event
+    struct ReplicaSetRefreshed : public Event
     {
         R_EVENT
 
-        ReplicaSetUpdated(QObject *sender) :
+        ReplicaSetRefreshed(QObject *sender) :
             Event(sender) {}
 
-        ReplicaSetUpdated(QObject *sender, const EventError &error) :
+        ReplicaSetRefreshed(QObject *sender, const EventError &error) :
+            Event(sender, error) {}
+    };
+
+    struct RefreshReplicaSetFolderRequest : public Event
+    {
+        R_EVENT
+
+        RefreshReplicaSetFolderRequest(QObject *sender) :
+            Event(sender) {}
+    };
+
+    struct RefreshReplicaSetFolderResponse : public Event
+    {
+        R_EVENT
+
+        // Primary is reachable
+        RefreshReplicaSetFolderResponse(QObject *sender, ReplicaSet replicaSet) :
+            Event(sender), replicaSet(replicaSet) {}
+        
+        // Primary is unreachable, secondary(ies) might be reachable
+        RefreshReplicaSetFolderResponse(QObject *sender, ReplicaSet replicaSet, const EventError &error) :
+            Event(sender, error), replicaSet(replicaSet) {}
+
+        ReplicaSet const replicaSet;
+    };
+
+    struct ReplicaSetFolderLoading : public Event
+    {
+        R_EVENT
+
+            ReplicaSetFolderLoading(QObject *sender) :
+            Event(sender) {}
+    };
+
+    struct ReplicaSetFolderRefreshed : public Event
+    {
+        R_EVENT
+
+        ReplicaSetFolderRefreshed(QObject *sender) :
+            Event(sender) {}
+
+        ReplicaSetFolderRefreshed(QObject *sender, const EventError &error) :
             Event(sender, error) {}
     };
 
@@ -975,13 +1019,16 @@ namespace Robomongo
     {
         R_EVENT
 
-        ConnectionEstablishedEvent(MongoServer *server, ConnectionType type) :
+        ConnectionEstablishedEvent(MongoServer *server, ConnectionType type, ConnectionInfo connInfo) :
             Event((QObject *)server),
             server(server),
-            connectionType(type) { }
+            connectionType(type),
+            connInfo(connInfo) { }       
 
+    public: // todo
         MongoServer *server;
         ConnectionType connectionType;
+        ConnectionInfo connInfo;
     };
 
     class DatabaseListLoadedEvent : public Event

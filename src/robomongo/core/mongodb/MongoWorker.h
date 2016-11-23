@@ -46,12 +46,17 @@ namespace Robomongo
         /**
          * @brief Initiate connection to MongoDB
          */
-        void handle(EstablishConnectionRequest *event);
+        bool handle(EstablishConnectionRequest *event);
 
         /**
         * @brief todo
         */
         void handle(RefreshReplicaSetRequest *event);
+
+        /**
+        * @brief todo
+        */
+        void handle(RefreshReplicaSetFolderRequest *event);
 
         /**
          * @brief Load list of all database names
@@ -159,7 +164,7 @@ namespace Robomongo
         /**
         *@brief Update Replica Set related parameters/settings
         */
-        ReplicaSet getReplicaSetInfo() const;   // todo: throws
+        ReplicaSet getReplicaSetInfo() const;   // todo: throws ??
 
         /**
          * @brief Send reply event to object 'obj'

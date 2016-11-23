@@ -13,7 +13,7 @@ namespace Robomongo
 
     // Messages
     class EstablishConnectionResponse;
-    struct RefreshReplicaSetResponse;
+    struct RefreshReplicaSetFolderResponse;
     class LoadDatabaseNamesResponse;
     class InsertDocumentResponse;
     class CreateDatabaseResponse;
@@ -56,12 +56,15 @@ namespace Robomongo
 
         // todo
         void tryRefreshReplicaSet();
+        void tryRefreshReplicaSetFolder();
 
         bool isConnected()const;
 
+        void addDatabase(MongoDatabase *database);
         void createDatabase(const std::string &dbName);
         void dropDatabase(const std::string &dbName);
         QStringList getDatabasesNames() const;
+        QList<MongoDatabase*> const& databases() const { return _databases; }; // todo
         MongoDatabase *findDatabaseByName(const std::string &dbName) const;
 
         void insertDocuments(const std::vector<mongo::BSONObj> &objCont, const MongoNamespace &ns);
@@ -81,17 +84,18 @@ namespace Robomongo
          * @brief Loads databases of this server asynchronously.
          */
         void loadDatabases();
-        MongoWorker *const client() const { return _client; }
+        MongoWorker *const worker() const { return _worker; }
 
         // todo: remove if not used
         // --- Getters ---
+        ReplicaSet* replicaSetInfo() const { return _replicaSetInfo.get(); }
         std::string getRepSetName() const { return _repSetName; }
         mongo::HostAndPort getRepPrimary() const { return _repPrimary; }
         std::vector<std::pair<std::string, bool>> getRepMembersHealths() const { return _repMembersAndHealths; }
 
     protected Q_SLOTS:
         void handle(EstablishConnectionResponse *event);
-        void handle(RefreshReplicaSetResponse *event);
+        void handle(RefreshReplicaSetFolderResponse *event);
         void handle(LoadDatabaseNamesResponse *event);
         void handle(InsertDocumentResponse *event);
         void handle(RemoveDocumentResponse *event);
@@ -100,10 +104,9 @@ namespace Robomongo
 
     private:
         void clearDatabases();
-        void addDatabase(MongoDatabase *database);
         void genericResponseHandler(Event *event, const std::string &userFriendlyMessage);
 
-        MongoWorker *_client;
+        MongoWorker *_worker;
         ConnectionSettings *_settings;
         EventBus *_bus;
         App *_app;
@@ -117,6 +120,8 @@ namespace Robomongo
         QList<MongoDatabase *> _databases;
 
         // Replica Set Info
+        std::unique_ptr<ReplicaSet> _replicaSetInfo;
+        // todo: remove
         std::string _repSetName;
         mongo::HostAndPort _repPrimary;
         std::vector<std::pair<std::string, bool>> _repMembersAndHealths;   // todo: vector of pairs of host and health
