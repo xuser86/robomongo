@@ -105,8 +105,10 @@ namespace Robomongo
         ReplicaSetRefreshed(QObject *sender) :
             Event(sender) {}
 
-        ReplicaSetRefreshed(QObject *sender, const EventError &error) :
-            Event(sender, error) {}
+        ReplicaSetRefreshed(QObject *sender, const EventError &error, ReplicaSet replicaSet) :
+            Event(sender, error), replicaSet(replicaSet) {}
+
+        ReplicaSet const replicaSet;
     };
 
     struct RefreshReplicaSetFolderRequest : public Event
@@ -149,6 +151,11 @@ namespace Robomongo
 
         ReplicaSetFolderRefreshed(QObject *sender, const EventError &error) :
             Event(sender, error) {}
+
+        ReplicaSetFolderRefreshed(QObject *sender, const EventError &error, ReplicaSet replicaSet) :
+            Event(sender, error), replicaSet(replicaSet) {}
+
+        ReplicaSet const replicaSet;
     };
 
     /**
@@ -595,16 +602,18 @@ namespace Robomongo
         MongoNamespace _ns;
     };
 
-    class DropCollectionResponse : public Event
+    struct DropCollectionResponse : public Event
     {
         R_EVENT
 
     public:
-        DropCollectionResponse(QObject *sender) :
-            Event(sender) {}
+        DropCollectionResponse(QObject *sender, std::string const& collection) :
+            Event(sender), collection(collection) {}
 
-        DropCollectionResponse(QObject *sender, const EventError &error) :
-            Event(sender, error) {}
+        DropCollectionResponse(QObject *sender, std::string const& collection, const EventError &error) :
+            Event(sender, error), collection(collection) {}
+
+        std::string const collection;
     };
 
     /**
@@ -629,16 +638,19 @@ namespace Robomongo
         std::string _newCollection;
     };
 
-    class RenameCollectionResponse : public Event
+    struct RenameCollectionResponse : public Event
     {
         R_EVENT
 
-    public:
-        RenameCollectionResponse(QObject *sender) :
-            Event(sender) {}
+            RenameCollectionResponse(QObject *sender, std::string const& oldCollection, 
+                                     std::string const& newCollection) :
+            Event(sender), oldCollection(oldCollection), newCollection(newCollection) {}
 
         RenameCollectionResponse(QObject *sender, const EventError &error) :
             Event(sender, error) {}
+
+        std::string const oldCollection;
+        std::string const newCollection;
     };
 
     /**
@@ -663,16 +675,20 @@ namespace Robomongo
         std::string _newCollection;
     };
 
-    class DuplicateCollectionResponse : public Event
+    struct DuplicateCollectionResponse : public Event
     {
         R_EVENT
 
     public:
-        DuplicateCollectionResponse(QObject *sender) :
-            Event(sender) {}
+        DuplicateCollectionResponse(QObject *sender, std::string const& sourceCollection,
+                                    std::string const& duplicateCollection) :
+            Event(sender), sourceCollection(sourceCollection), duplicateCollection(duplicateCollection) {}
 
-        DuplicateCollectionResponse(QObject *sender, const EventError &error) :
-            Event(sender, error) {}
+        DuplicateCollectionResponse(QObject *sender, std::string const& sourceCollection, const EventError &error) :
+            Event(sender, error), sourceCollection(sourceCollection) {}
+
+        std::string const sourceCollection;
+        std::string const duplicateCollection;
     };
 
      /**

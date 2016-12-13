@@ -16,6 +16,10 @@ namespace Robomongo
 
         // todo
         void updateText();
+        void disableSomeContextMenuActions(/*bool disable*/); // todo: rename toggle*
+        void expand();
+        void setRefreshFlag(bool state) { _refreshFlag = state; }
+        bool refreshFlag() const { return _refreshFlag; }
 
     private Q_SLOTS:
         void on_refresh();
@@ -25,5 +29,6 @@ namespace Robomongo
 
     private:
         MongoServer *const _server;
+        bool _refreshFlag = true;
     };
 }

@@ -685,12 +685,14 @@ namespace Robomongo
         if (wid) {
             wid->openFile();
         }
-        else {
-            SettingsManager::ConnectionSettingsContainerType connections = AppRegistry::instance().settingsManager()->connections();
-            if (connections.size() == 1) {
+        else {  // todo: currently this case not handled properly, since "Open" button is 
+                // disabled when no tabs exist
+            auto connectionsCopy = AppRegistry::instance().settingsManager()->connections();
+            if (connectionsCopy.size() == 1) {
                 ScriptInfo inf = ScriptInfo(QString());
                 if (inf.loadFromFile()) {
-                    _app->openShell(connections.at(0), inf);
+                    // todo: for now do not open new shell
+                    _app->openShell(nullptr, connectionsCopy.at(0), inf);
                 }
             }
         }
@@ -1030,7 +1032,7 @@ namespace Robomongo
             return;
 
         lastServerHandle = event->serverHandle;
-        QMessageBox::information(this, "Error", QtUtils::toQString(event->message));
+        QMessageBox::critical(this, "Error", QtUtils::toQString(event->message));
     }
 
     void MainWindow::handle(ScriptExecutingEvent *)
@@ -1051,7 +1053,7 @@ namespace Robomongo
         ss << event->userFriendlyErrorMessage << std::endl << std::endl
             << "Error:" << std::endl << event->technicalErrorMessage;
 
-        QMessageBox::information(NULL, "Operation failed", QtUtils::toQString(ss.str()));
+        QMessageBox::critical(NULL, "Operation failed", QtUtils::toQString(ss.str()));
     }
 
     void MainWindow::keyPressEvent(QKeyEvent *event)

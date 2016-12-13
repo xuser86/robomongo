@@ -56,9 +56,9 @@ namespace Robomongo
 
         // todo
         void tryRefreshReplicaSet();
-        void tryRefreshReplicaSetFolder();
+        void tryRefreshReplicaSetFolder(bool showLoading = true);
 
-        bool isConnected()const;
+        bool isConnected() const;
 
         void addDatabase(MongoDatabase *database);
         void createDatabase(const std::string &dbName);
@@ -93,6 +93,9 @@ namespace Robomongo
         mongo::HostAndPort getRepPrimary() const { return _repPrimary; }
         std::vector<std::pair<std::string, bool>> getRepMembersHealths() const { return _repMembersAndHealths; }
 
+        // todo
+        void handle(ReplicaSetRefreshed *event);
+
     protected Q_SLOTS:
         void handle(EstablishConnectionResponse *event);
         void handle(RefreshReplicaSetFolderResponse *event);
@@ -102,12 +105,13 @@ namespace Robomongo
         void handle(CreateDatabaseResponse *event);
         void handle(DropDatabaseResponse *event);
 
-    private:
+    private:                 
         void clearDatabases();
         void genericResponseHandler(Event *event, const std::string &userFriendlyMessage);
+        void handleReplicaSetRefreshEvents(bool isError, EventError eventError, ReplicaSet const& replicaSet);
 
         MongoWorker *_worker;
-        ConnectionSettings *_settings;
+        ConnectionSettings *_connSettings;
         EventBus *_bus;
         App *_app;
 
