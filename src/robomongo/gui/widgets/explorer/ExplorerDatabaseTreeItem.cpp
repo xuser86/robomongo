@@ -24,9 +24,11 @@
 
 namespace
 {
-    void openCurrentDatabaseShell(Robomongo::MongoDatabase *database, const QString &script, bool execute = true, const Robomongo::CursorPosition &cursor = Robomongo::CursorPosition())
+    void openCurrentDatabaseShell(Robomongo::MongoDatabase *database, const QString &script, bool execute = true, 
+                                  const Robomongo::CursorPosition &cursor = Robomongo::CursorPosition())
     {
-        Robomongo::AppRegistry::instance().app()->openShell(database, script, execute, Robomongo::QtUtils::toQString(database->name()), cursor);
+        Robomongo::AppRegistry::instance().app()->openShell(database, script, execute, 
+                                                            Robomongo::QtUtils::toQString(database->name()), cursor);
     }
 }
 
@@ -48,8 +50,12 @@ namespace Robomongo
         _bus(AppRegistry::instance().bus()),
         _collectionSystemFolderItem(NULL)
     {
-        QAction *openDbShellAction = new QAction("Open Shell", this);
+        auto openDbShellAction = new QAction("Open Shell", this);
+#ifdef __APPLE__
+        openDbShellAction->setIcon(GuiRegistry::instance().mongodbIconForMAC());
+#else
         openDbShellAction->setIcon(GuiRegistry::instance().mongodbIcon());
+#endif
         VERIFY(connect(openDbShellAction, SIGNAL(triggered()), SLOT(ui_dbOpenShell())));
 
         QAction *dbStats = new QAction("Database Statistics", this);
@@ -111,15 +117,9 @@ namespace Robomongo
         setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicatorWhenChildless);
     }
 
-    void ExplorerDatabaseTreeItem::expandCollections()
-    {
-        _database->loadCollections();
-    }
+    void ExplorerDatabaseTreeItem::expandCollections() { _database->loadCollections(); }
 
-    void ExplorerDatabaseTreeItem::expandUsers()
-    {
-        _database->loadUsers();
-    }
+    void ExplorerDatabaseTreeItem::expandUsers() { _database->loadUsers(); }
 
     void ExplorerDatabaseTreeItem::expandColection(ExplorerCollectionTreeItem *const item)
     {        
@@ -151,11 +151,6 @@ namespace Robomongo
         if (event->isError()) {
             _collectionFolderItem->setText(0, "Collections");
             _collectionFolderItem->setExpanded(false);
-
-            std::stringstream ss;
-            ss << "Cannot load list of collections.\n\nError:\n" << event->error().errorMessage();
-
-            QMessageBox::information(NULL, "Error", QtUtils::toQString(ss.str()));
             return;
         }
 
@@ -194,10 +189,6 @@ namespace Robomongo
             _usersFolderItem->setText(0, "Users");
             _usersFolderItem->setExpanded(false);
 
-            std::stringstream ss;
-            ss << "Cannot load list of users.\n\nError:\n" << event->error().errorMessage();
-
-            QMessageBox::information(NULL, "Error", QtUtils::toQString(ss.str()));
             return;
         }
 
@@ -222,11 +213,6 @@ namespace Robomongo
         if (event->isError()) {
             _functionsFolderItem->setText(0, "Functions");
             _functionsFolderItem->setExpanded(false);
-
-            std::stringstream ss;
-            ss << "Cannot load list of functions.\n\nError:\n" << event->error().errorMessage();
-
-            QMessageBox::information(NULL, "Error", QtUtils::toQString(ss.str()));
             return;
         }
 
@@ -315,15 +301,13 @@ namespace Robomongo
     void ExplorerDatabaseTreeItem::ui_dbDrop()
     {
         // Ask user
-        QString buff = QString("Drop <b>%1</b> database?").arg(QtUtils::toQString(_database->name()));
-        int answer = QMessageBox::question(treeWidget(),
-            "Drop Database", buff,
-            QMessageBox::Yes, QMessageBox::No, QMessageBox::NoButton);
+        auto const& buff = QString("Drop <b>%1</b> database?").arg(QtUtils::toQString(_database->name()));
+        int const answer = QMessageBox::question(treeWidget(), "Drop Database", buff, 
+                                                 QMessageBox::Yes, QMessageBox::No, QMessageBox::NoButton);
         if (answer != QMessageBox::Yes)
             return;
 
         _database->server()->dropDatabase(_database->name());
-        _database->server()->loadDatabases(); // refresh list of databases
     }
 
     void ExplorerDatabaseTreeItem::ui_dbRepair()

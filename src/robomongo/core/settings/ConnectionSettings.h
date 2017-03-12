@@ -26,14 +26,14 @@ namespace Robomongo
         /**
          * @brief Creates ConnectionSettings with default values
          */
-        ConnectionSettings();
+        ConnectionSettings(bool isClone);
         
         /**
         * @brief Creates ConnectionSettings from mongo connection string URI
         */
-        ConnectionSettings(const mongo::MongoURI& uri);
+        ConnectionSettings(const mongo::MongoURI& uri, bool isClone);
 
-        explicit ConnectionSettings(QVariantMap map);
+        explicit ConnectionSettings(QVariantMap map, bool isClone);
 
         /**
          * @brief Cleanup used resources
@@ -141,12 +141,20 @@ namespace Robomongo
         }
 
         mongo::HostAndPort hostAndPort() const;
-        SshSettings *sshSettings() const { return _sshSettings; }
-        SslSettings *sslSettings() const { return _sslSettings; }
-        ReplicaSetSettings *replicaSetSettings() const { return _replicaSetSettings; }
+        SshSettings *sshSettings() const { return _sshSettings.get(); }
+        SslSettings *sslSettings() const { return _sslSettings.get(); }
+        ReplicaSetSettings *replicaSetSettings() const { return _replicaSetSettings.get(); }
 
         bool isReplicaSet() const { return _isReplicaSet; }
         void setReplicaSet(bool flag) { _isReplicaSet = flag; }
+
+        void setUniqueId(int id) { _uniqueId = id; }
+        int uniqueId() const { return _uniqueId; }
+
+        // todo
+        QString uuid() const { return _uuid; }
+        void setUuid(QString const& uuid) { _uuid = uuid; }
+
 
     private:
         CredentialSettings *findCredential(const std::string &databaseName) const;
@@ -156,13 +164,26 @@ namespace Robomongo
         int _port;
         std::string _defaultDatabase;
         mutable QList<CredentialSettings *> _credentials;
-        SshSettings *_sshSettings;
-        SslSettings *_sslSettings;
+        std::unique_ptr<SshSettings> _sshSettings;
+        std::unique_ptr<SslSettings> _sslSettings;
         bool _isReplicaSet;
-        ReplicaSetSettings *_replicaSetSettings;
-
+        std::unique_ptr<ReplicaSetSettings> _replicaSetSettings;
+        
         // Was this connection imported from somewhere?
         bool _imported;
+
+        // Flag to check if this is a clone(copy) or original ConnectionSettings
+        // Note: If this is not a clone connection settings, this object is original connection 
+        //       ConnectionSettings object which is loaded/saved into Robomongo config. file.
+        bool _clone = false;
+
+        // If this is a clone connection settings, unique ID will be used to identify from which 
+        // original connection settings this object is cloned.
+        // -1 for invalid(uninitialized) unique ID which should not be seen in theory
+        int _uniqueId = -1;
+
+        // todo
+        QString _uuid;
     };
 }
 

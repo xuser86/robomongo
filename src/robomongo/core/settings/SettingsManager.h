@@ -8,6 +8,26 @@
 namespace Robomongo
 {
     class ConnectionSettings;
+    struct ConfigFileAndImportFunction;
+    //struct RecentConnection;
+
+    struct RecentConnection
+    {
+        RecentConnection(QString const& uuid, std::string const& name)
+            : uuid(uuid), name(name) {}
+
+        // todo: remove
+        RecentConnection& operator=(const RecentConnection& other)
+        {
+            uuid = other.uuid;
+            name = other.name;
+            return *this;
+        }
+
+        QString uuid;
+        std::string name;
+    };
+
     /**
      * @brief SettingsManager gives you access to all settings, that is used
      *        by Robomongo. It can load() and save() them. Config file usually
@@ -23,6 +43,7 @@ namespace Robomongo
     public:
         typedef std::vector<ConnectionSettings *> ConnectionSettingsContainerType;
         typedef QMap<QString, QVariant> ToolbarSettingsContainerType;
+
         /**
          * @brief Creates SettingsManager for config file in default location
          *        (usually ~/.config/robomongo/robomongo.json)
@@ -50,12 +71,33 @@ namespace Robomongo
          * @brief Adds connection to the end of list.
          * Connection now will be owned by SettingsManager.
          */
-        void addConnection(ConnectionSettings *connection);
+        static void addConnection(ConnectionSettings *connection);
 
         /**
          * @brief Removes connection by index
          */
         void removeConnection(ConnectionSettings *connection);
+
+        /**
+        * @brief todo
+        */
+        static void addRecentConnection(ConnectionSettings *connection);
+        static void deleteRecentConnection(ConnectionSettings *connection);
+        static void setRecentConnections(std::vector<ConnectionSettings const*> const& recentConns);
+        static void clearRecentConnections();
+
+        /**
+        * @brief  Finds and returns original (non-clone) connection settings which is 
+        *         loaded/saved from/into Robomongo config. file.
+        * @param  uniqueID : Unique ID for an original connection settings.
+        * @return If uniqueID is valid returns original connection settings, 
+        *         nullptr otherwise.
+        */
+        ConnectionSettings* getConnectionSettings(int uniqueId);
+
+        // todo
+        ConnectionSettings* getConnectionSettingsByUuid(QString const& uuid) const;
+        ConnectionSettings* getConnectionSettingsByUuid(std::string const& uuid) const;
 
         void reorderConnections(const ConnectionSettingsContainerType &connections);
 
@@ -65,6 +107,9 @@ namespace Robomongo
          * @brief Returns list of connections
          */
         ConnectionSettingsContainerType connections() const { return _connections; }
+        
+
+        std::vector<RecentConnection>& recentConnections() const { return _recentConnections; }
 
         ToolbarSettingsContainerType toolbars() const { return _toolbars; }
 
@@ -98,6 +143,9 @@ namespace Robomongo
         void setDisableConnectionShortcuts(bool isDisable) { _disableConnectionShortcuts = isDisable; }
         bool disableConnectionShortcuts() const { return _disableConnectionShortcuts; }
 
+        void setEulaAccepted(bool accepted) { _eulaAccepted = accepted; }
+        bool eulaAccepted() const { return _eulaAccepted; }
+
         void setBatchSize(int batchSize) { _batchSize = batchSize; }
         int batchSize() const { return _batchSize; }
 
@@ -122,6 +170,7 @@ namespace Robomongo
          * Returns number of imported connections
          */
         int importedConnectionsCount();
+
     private:
 
         /**
@@ -138,8 +187,8 @@ namespace Robomongo
          * Load connection settings from previous versions of Robomongo
          */
         void importConnections();
-        void importConnectionsFrom_0_8_5_to_0_9();
-        void importConnectionsFrom_0_9_to_1_0();
+        static bool importConnectionsFrom_0_8_5_to_0_9();
+        static bool importConnectionsFrom_0_9_to_1_0();
 
         /**
          * @brief Version of settings schema currently loaded
@@ -156,6 +205,7 @@ namespace Robomongo
         bool _minimizeToTray;
         bool _lineNumbers;
         bool _disableConnectionShortcuts;
+        bool _eulaAccepted = false;
         int _batchSize;
         QString _currentStyle;
         QString _textFontFamily;
@@ -168,10 +218,26 @@ namespace Robomongo
         // Robomongo are imported
         bool _imported;
 
+        // todo: 
+        QString _uuid;
+
         /**
          * @brief List of connections
          */
-        ConnectionSettingsContainerType _connections;
+        static std::vector<ConnectionSettings*> _connections;
+
+        // todo
+        static std::vector<RecentConnection> _recentConnections;
+        
         ToolbarSettingsContainerType _toolbars;
+
+        // List of config. file absolute paths and related import functions. 
+        // Must be updated with care and with every new version. Details on cpp file.       
+        static const std::vector<ConfigFileAndImportFunction> _configFilesAndImportFunctions;
+
+        // Unique Id counter which is incremented only when a non-clone ConnectionSettings 
+        // object is created and assigned can be assigned to clone or non-clone 
+        // ConnectionSettings objects in order to identify source object ID for a clone.
+        static int _uniqueIdCounter;
     };
 }

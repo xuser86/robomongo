@@ -22,6 +22,7 @@ namespace Robomongo
     class ConnectionMenu;
     class App;
     class ExplorerWidget;
+    class WelcomeTab;
 
     class MainWindow : public QMainWindow
     {
@@ -30,6 +31,8 @@ namespace Robomongo
     public:
         typedef QMainWindow BaseClass;
         MainWindow();
+
+        WelcomeTab* getWelcomeTab();
 
     public Q_SLOTS:
         void manageConnections();
@@ -138,9 +141,11 @@ namespace Robomongo
         QToolBar *_execToolBar;
         
         // Temporarily disabling export/import feature
-        //// Export/import tool bar
-        //QAction *_exportAction;
-        //QAction *_importAction;
+        /*
+        // Export/import tool bar
+        QAction *_exportAction;
+        QAction *_importAction;
+        */
 
 #if defined(Q_OS_WIN)
         QSystemTrayIcon *_trayIcon;

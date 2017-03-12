@@ -1,6 +1,7 @@
 #include "robomongo/gui/widgets/workarea/WorkAreaTabWidget.h"
 
 #include <QKeyEvent>
+#include <QScrollArea>
 
 #include "robomongo/core/utils/QtUtils.h"
 #include "robomongo/core/KeyboardManager.h"
@@ -8,6 +9,7 @@
 
 #include "robomongo/gui/widgets/workarea/WorkAreaTabBar.h"
 #include "robomongo/gui/widgets/workarea/QueryWidget.h"
+#include "robomongo/gui/widgets/workarea/WelcomeTab.h"
 #include "robomongo/gui/GuiRegistry.h"
 
 namespace Robomongo
@@ -20,7 +22,7 @@ namespace Robomongo
     WorkAreaTabWidget::WorkAreaTabWidget(QWidget *parent) :
         QTabWidget(parent)
     {
-        WorkAreaTabBar *tab = new WorkAreaTabBar(this);
+        auto tab = new WorkAreaTabBar(this);
         // This line (setTabBar()) should go before setTabsClosable(true)
         setTabBar(tab);
         setTabsClosable(true);
@@ -53,7 +55,6 @@ namespace Robomongo
         setStyleSheet(styles);
 #endif
 
-
         VERIFY(connect(this, SIGNAL(tabCloseRequested(int)), SLOT(tabBar_tabCloseRequested(int))));
         VERIFY(connect(this, SIGNAL(currentChanged(int)), SLOT(ui_currentChanged(int))));
 
@@ -62,6 +63,13 @@ namespace Robomongo
         VERIFY(connect(tab, SIGNAL(duplicateTabRequested(int)), SLOT(ui_duplicateTabRequested(int))));
         VERIFY(connect(tab, SIGNAL(closeOtherTabsRequested(int)), SLOT(ui_closeOtherTabsRequested(int))));
         VERIFY(connect(tab, SIGNAL(closeTabsToTheRightRequested(int)), SLOT(ui_closeTabsToTheRightRequested(int))));
+
+        // todo: change icon
+        auto scrollArea = new QScrollArea;
+        _welcomeTab = new WelcomeTab(scrollArea);
+        scrollArea->setWidget(_welcomeTab);
+        addTab(scrollArea, GuiRegistry::instance().mainWindowIcon(), "Welcome");
+        scrollArea->setFrameShape(QFrame::NoFrame);
     }
 
     void WorkAreaTabWidget::closeTab(int index)
@@ -112,7 +120,12 @@ namespace Robomongo
 
     QueryWidget *WorkAreaTabWidget::queryWidget(int index)
     {
-        return qobject_cast<QueryWidget *>(widget(index));
+        return qobject_cast<QueryWidget*>(widget(index));
+    }
+
+    WelcomeTab* WorkAreaTabWidget::getWelcomeTab()
+    {
+        return _welcomeTab;
     }
 
     /**
@@ -235,7 +248,7 @@ namespace Robomongo
 
         QString shellName = title.isEmpty() ? " Loading..." : title;
 
-        QueryWidget *queryWidget = new QueryWidget(event->shell, this);
+        auto queryWidget = new QueryWidget(event->shell, this);
         VERIFY(connect(queryWidget, SIGNAL(titleChanged(const QString &)), this, SLOT(tabTextChange(const QString &))));
         VERIFY(connect(queryWidget, SIGNAL(toolTipChanged(const QString &)), this, SLOT(tooltipTextChange(const QString &))));
         

@@ -10,13 +10,14 @@ namespace Robomongo
     class ExplorerReplicaSetFolderItem : public ExplorerTreeItem
     {
         Q_OBJECT
+
     public:
-        typedef ExplorerTreeItem BaseClass;
+        using BaseClass = ExplorerTreeItem;
+
         ExplorerReplicaSetFolderItem(ExplorerTreeItem *item, MongoServer *const server);
 
-        // todo
         void updateText();
-        void disableSomeContextMenuActions(/*bool disable*/); // todo: rename toggle*
+        void disableSomeContextMenuActions();
         void expand();
         void setRefreshFlag(bool state) { _refreshFlag = state; }
         bool refreshFlag() const { return _refreshFlag; }
@@ -28,7 +29,7 @@ namespace Robomongo
         void handle(ReplicaSetFolderLoading *event);
 
     private:
-        MongoServer *const _server;
+        MongoServer *const _server = nullptr;
         bool _refreshFlag = true;
     };
 }

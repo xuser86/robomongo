@@ -10,16 +10,18 @@
 #include <mongo/base/initializer.h>
 #include <mongo/util/net/ssl_options.h>
 
+#include "robomongo/core/AppRegistry.h"
+#include "robomongo/core/settings/SettingsManager.h"
 #include "robomongo/gui/MainWindow.h"
 #include "robomongo/gui/AppStyle.h"
+#include "robomongo/gui/dialogs/EulaDialog.h"
 #include "robomongo/ssh/ssh.h"
 
 
 int main(int argc, char *argv[], char** envp)
 {
-    if (rbm_ssh_init()) {
+    if (rbm_ssh_init()) 
         return 1;
-    }
 
     // Please check, do we really need envp for other OSes?
 #ifdef Q_OS_WIN
@@ -53,6 +55,16 @@ int main(int argc, char *argv[], char** envp)
 #ifdef Q_OS_MAC
     app.setAttribute(Qt::AA_UseHighDpiPixmaps);
 #endif
+
+    // EULA License Agreement
+    if (!Robomongo::AppRegistry::instance().settingsManager()->eulaAccepted()) {
+        Robomongo::EulaDialog eulaDialog;
+        if (eulaDialog.exec() == QDialog::Rejected) {
+            Robomongo::AppRegistry::instance().settingsManager()->setEulaAccepted(false);   // todo: need to save
+            return 1;   // todo: ssh_cleanup
+        }
+    }
+    Robomongo::AppRegistry::instance().settingsManager()->setEulaAccepted(true);
 
     // Init GUI style
     Robomongo::AppStyleUtils::initStyle();

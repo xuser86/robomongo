@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+#include <QUuid>
+
 #include "robomongo/core/settings/CredentialSettings.h"
 #include "robomongo/core/settings/ReplicaSetSettings.h"
 #include "robomongo/core/settings/SshSettings.h"
@@ -21,11 +23,10 @@ namespace
 
 namespace Robomongo
 {
-
     /**
      * Creates ConnectionSettings with default values
      */
-    ConnectionSettings::ConnectionSettings() : QObject(),
+    ConnectionSettings::ConnectionSettings(bool isClone) : QObject(),
         _connectionName(defaultNameConnection),
         _host(defaultServerHost),
         _port(port),
@@ -33,10 +34,13 @@ namespace Robomongo
         _sshSettings(new SshSettings()),
         _sslSettings(new SslSettings()),
         _isReplicaSet(false),
-        _replicaSetSettings(new ReplicaSetSettings())       // todo: dont create if not replica set
+        _replicaSetSettings(new ReplicaSetSettings()),
+        _clone(isClone),
+        _uuid(isClone ? "" : QUuid::createUuid().toString())
     { }
 
-    ConnectionSettings::ConnectionSettings(const mongo::MongoURI& uri) 
+    // todo: remove or add clone support
+    ConnectionSettings::ConnectionSettings(const mongo::MongoURI& uri, bool isClone)  
         : _connectionName(defaultNameConnection),
         _host(defaultServerHost),
         _port(port),
@@ -44,7 +48,9 @@ namespace Robomongo
         _sshSettings(new SshSettings()),
         _sslSettings(new SslSettings()),
         _isReplicaSet((uri.type() == mongo::ConnectionString::ConnectionType::SET)),
-        _replicaSetSettings(new ReplicaSetSettings(uri))    // todo: dont create if not replica set
+        _replicaSetSettings(new ReplicaSetSettings(uri)),
+        _clone(isClone),
+        _uuid(QUuid::createUuid().toString())   // todo
     {
         if (!uri.getServers().empty()) {
             _host = uri.getServers().front().host();
@@ -94,6 +100,13 @@ namespace Robomongo
             _replicaSetSettings->fromVariant(map.value("replicaSet").toMap());
         }
 
+        // If UUID has never been created or is empty, create a new one. Otherwise load the existing.
+        if (!map.contains("uuid") || map.value("uuid").toString().isEmpty())
+            _uuid = QUuid::createUuid().toString();
+        else
+            _uuid = map.value("uuid").toString();
+
+
 //#ifdef MONGO_SSL
 //      ,SSLInfo(map.value("sslEnabled").toBool(),QtUtils::toStdString(map.value("sslPemKeyFile").toString()))
 //#endif
@@ -105,9 +118,6 @@ namespace Robomongo
     ConnectionSettings::~ConnectionSettings()
     {
         clearCredentials();
-        delete _sshSettings;
-        delete _sslSettings;
-        delete _replicaSetSettings; // todo: unique_ptr
     }
 
     /**
@@ -115,9 +125,11 @@ namespace Robomongo
      */
     ConnectionSettings *ConnectionSettings::clone() const
     {
-        ConnectionSettings *record = new ConnectionSettings();
-        record->apply(this);
-        return record;
+        auto settings = new ConnectionSettings(true);
+        settings->setUniqueId(_uniqueId);
+        settings->setUuid(_uuid);
+        settings->apply(this);
+        return settings;
     }
 
     /**
@@ -138,9 +150,9 @@ namespace Robomongo
             addCredential((*it)->clone());
         }
 
-        _sshSettings = source->sshSettings()->clone();
-        _sslSettings = source->sslSettings()->clone();
-        _replicaSetSettings = source->_replicaSetSettings->clone(); // todo: leak candidate
+        _sshSettings.reset(source->sshSettings()->clone());
+        _sslSettings.reset(source->sslSettings()->clone());
+        _replicaSetSettings.reset(source->_replicaSetSettings->clone());
 
 //#ifdef MONGO_SSL
 //        setSslInfo(source->sslInfo());
@@ -176,13 +188,14 @@ namespace Robomongo
 
         map.insert("ssh", _sshSettings->toVariant());
         map.insert("ssl", _sslSettings->toVariant());
+        map.insert("uuid", _uuid); 
 
         return map;
     }
 
      CredentialSettings *ConnectionSettings::findCredential(const std::string &databaseName) const
      {
-         CredentialSettings *result = NULL;
+         CredentialSettings *result = nullptr;
          for (QList<CredentialSettings *>::const_iterator it = _credentials.begin(); it != _credentials.end(); ++it) {
              CredentialSettings *cred = *it;
              if (cred->databaseName() == databaseName) {

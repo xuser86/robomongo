@@ -63,7 +63,7 @@ namespace Robomongo
         void copyCollection(MongoServer *server, const std::string &sourceDatabase, const std::string &collection);
 
         void createUser(const MongoUser &user, bool overwrite);
-        void dropUser(const mongo::OID &id);
+        void dropUser(const mongo::OID &id, std::string const& userName);
 
         void createFunction(const MongoFunction &fun);
         void updateFunction(const std::string &name, const MongoFunction &fun);
@@ -83,16 +83,19 @@ namespace Robomongo
         void handle(LoadCollectionNamesResponse *event);
         void handle(LoadUsersResponse *event);
         void handle(LoadFunctionsResponse *event);
+        void handle(CreateFunctionResponse *event);
         void handle(CreateUserResponse *event);
         void handle(CreateCollectionResponse *event);
         void handle(DropCollectionResponse *event);
+        void handle(DropFunctionResponse *event);
+        void handle(DropUserResponse *event);
         void handle(RenameCollectionResponse *event);
         void handle(DuplicateCollectionResponse *event);
 
     private:
         void clearCollections();
         void addCollection(MongoCollection *collection);
-        void genericResponseHandler(Event *event, const std::string &userFriendlyMessage);
+        void handleIfReplicaSetUnreachable(Event *event);
 
     private:
         MongoServer *_server;

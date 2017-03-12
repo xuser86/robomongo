@@ -60,11 +60,14 @@ namespace Robomongo
         const QIcon& leftIcon() const;
         const QIcon& rightIcon() const;
         const QIcon& mongodbIcon() const;
+        const QIcon& mongodbIconForMAC() const;
         const QIcon& connectIcon() const;
         const QIcon& executeIcon() const;
         const QIcon& stopIcon() const;
         const QIcon& exportIcon() const;
         const QIcon& importIcon() const;
+        const QIcon& deleteIcon() const;
+        const QIcon& deleteIconMouseHovered() const;
         const QIcon& mainWindowIcon() const;
         const QIcon& bsonObjectIcon() const;
         const QIcon& bsonArrayIcon() const;
@@ -83,6 +86,8 @@ namespace Robomongo
         const QIcon& keyIcon() const;
         const QIcon& showIcon() const;
         const QIcon& hideIcon() const;
+        const QIcon& plusIcon() const;
+        const QIcon& minusIcon() const;
 
         const QBrush& typeBrush() const;
 

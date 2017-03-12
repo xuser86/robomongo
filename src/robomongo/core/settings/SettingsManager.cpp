@@ -3,6 +3,8 @@
 #include <QDir>
 #include <QFile>
 #include <QVariantList>
+#include <QUuid>
+
 #include <parser.h>
 #include <serializer.h>
 
@@ -26,17 +28,46 @@ namespace
          * @brief Config file absolute path
          *        (usually: /home/user/.config/robomongo/robomongo.json)
          */
-        const QString _configPath = QString("%1/.config/robomongo/1.0/robomongo.json").arg(QDir::homePath());
+        const auto _configPath = QString("%1/.config/robomongo/1.0/robomongo.json").arg(QDir::homePath());
 
         /**
          * @brief Config file containing directory path
          *        (usually: /home/user/.config/robomongo)
          */
-        const QString _configDir = QString("%1/.config/robomongo/1.0").arg(QDir::homePath());
+        const auto _configDir = QString("%1/.config/robomongo/1.0").arg(QDir::homePath());
 }
 
 namespace Robomongo
 {
+    int SettingsManager::_uniqueIdCounter = 0;
+
+    /**
+    * @brief Robomongo config. files
+    */
+    const auto CONFIG_FILE_0_8_5 = QString("%1/.config/robomongo/robomongo.json").arg(QDir::homePath());
+    const auto CONFIG_FILE_0_9 = QString("%1/.config/robomongo/0.9/robomongo.json").arg(QDir::homePath());
+    const auto CONFIG_FILE_1_0 = QString("%1/.config/robomongo/1.0/robomongo.json").arg(QDir::homePath());
+
+    struct ConfigFileAndImportFunction
+    {
+        ConfigFileAndImportFunction(QString const& configFile, std::function<bool()> importFunction)
+            : file(configFile), import(importFunction) {}
+
+        QString file;
+        std::function<bool()> import;
+    };
+
+    // Warning: Config. file and import function of a new release must be placed as first element of 
+    //          vector initializer list below in order.
+    std::vector<ConfigFileAndImportFunction> const SettingsManager::_configFilesAndImportFunctions
+    {
+        ConfigFileAndImportFunction(CONFIG_FILE_0_9, SettingsManager::importConnectionsFrom_0_9_to_1_0),
+        ConfigFileAndImportFunction(CONFIG_FILE_0_8_5, SettingsManager::importConnectionsFrom_0_8_5_to_0_9)
+    };
+
+    std::vector<ConnectionSettings*>  SettingsManager::_connections;
+    std::vector<RecentConnection> SettingsManager::_recentConnections;
+
     /**
      * Creates SettingsManager for config file in default location
      * ~/.config/robomongo/robomongo.json
@@ -53,12 +84,16 @@ namespace Robomongo
         _disableConnectionShortcuts(false),
         _batchSize(50),
         _textFontFamily(""),
-        _textFontPointSize(-1), 
+        _textFontPointSize(-1),
         _mongoTimeoutSec(10),
         _shellTimeoutSec(15),
         _imported(false)
     {
-        load();
+        if (!load()) {  // if load fails (probably due to non-existing config. file or directory)
+            save();     // create empty settings file
+            load();     // try loading again for the purpose of import from previous Robomongo versions
+        }
+
         LOG_MSG("SettingsManager initialized in " + _configPath, mongo::logger::LogSeverity::Info(), false);
     }
 
@@ -133,7 +168,7 @@ namespace Robomongo
         if (encoding > 3 || encoding < 0)
             encoding = 0;
 
-        _uuidEncoding = (UUIDEncoding) encoding;
+        _uuidEncoding = (UUIDEncoding)encoding;
 
 
         // 3. Load view mode
@@ -141,8 +176,9 @@ namespace Robomongo
             int viewMode = map.value("viewMode").toInt();
             if (viewMode > 2 || viewMode < 0)
                 viewMode = Custom; // Default View Mode
-            _viewMode = (ViewMode) viewMode;
-        } else {
+            _viewMode = (ViewMode)viewMode;
+        }
+        else {
             _viewMode = Custom; // Default View Mode
         }
 
@@ -157,17 +193,25 @@ namespace Robomongo
         if (timeZone > 1 || timeZone < 0)
             timeZone = 0;
 
-        _timeZone = (SupportedTimes) timeZone;
+        _timeZone = (SupportedTimes)timeZone;
         _loadMongoRcJs = map.value("loadMongoRcJs").toBool();
         _disableConnectionShortcuts = map.value("disableConnectionShortcuts").toBool();
+        _eulaAccepted = map.value("eulaAccepted").toBool();
+
+        // If UUID has never been created or is empty, create a new one. Otherwise load the existing.
+        if (!map.contains("uuid") || map.value("uuid").toString().isEmpty())
+            _uuid = QUuid::createUuid().toString();
+        else
+            _uuid = map.value("uuid").toString();
 
         // Load AutocompletionMode
         if (map.contains("autocompletionMode")) {
             int autocompletionMode = map.value("autocompletionMode").toInt();
             if (autocompletionMode < 0 || autocompletionMode > 2)
                 autocompletionMode = AutocompleteAll; // Default Mode
-            _autocompletionMode = (AutocompletionMode) autocompletionMode;
-        } else {
+            _autocompletionMode = (AutocompletionMode)autocompletionMode;
+        }
+        else {
             _autocompletionMode = AutocompleteAll; // Default Mode
         }
 
@@ -197,10 +241,18 @@ namespace Robomongo
         _connections.clear();
 
         QVariantList list = map.value("connections").toList();
-        for (QVariantList::iterator it = list.begin(); it != list.end(); ++it) {
-            ConnectionSettings *record = new ConnectionSettings();
-            record->fromVariant((*it).toMap());
-            addConnection(record);
+        for (auto conn : list) {
+            auto connSettings = new ConnectionSettings(false);
+            connSettings->fromVariant(conn.toMap());
+            addConnection(connSettings);
+        }
+
+        // Load recent connections
+        _recentConnections.clear();
+        QVariantList const& rlist = map.value("recentConnections").toList();
+        for (auto const& rconn : rlist) {
+            _recentConnections.push_back(RecentConnection(rconn.toMap().value("uuid").toString(),
+                                                          rconn.toMap().value("name").toString().toStdString()));
         }
 
         _toolbars = map.value("toolbars").toMap();
@@ -257,42 +309,56 @@ namespace Robomongo
 
         // 7. Save disableConnectionShortcuts
         map.insert("disableConnectionShortcuts", _disableConnectionShortcuts);
+        
+        // 8. Save eulaAccepted
+        map.insert("eulaAccepted", _eulaAccepted);
 
-        // 8. Save batchSize
+        // 9. Save batchSize
         map.insert("batchSize", _batchSize);
         map.insert("mongoTimeoutSec", _mongoTimeoutSec);
         map.insert("shellTimeoutSec", _shellTimeoutSec);
 
-        // 9. Save style
+        // 10. Save style
         map.insert("style", _currentStyle);
 
-        // 10. Save font information
+        // 11. Save font information
         map.insert("textFontFamily", _textFontFamily);
         map.insert("textFontPointSize", _textFontPointSize);
 
-        // 11. Save connections
+        // 12. Save connections
         QVariantList list;
-
-        for (ConnectionSettingsContainerType::const_iterator it = _connections.begin(); it != _connections.end(); ++it) {
-            QVariantMap rm = (*it)->toVariant().toMap();
-            list.append(rm);
-        }
+        for (auto const conn : _connections) 
+            list.append(conn->toVariant().toMap());
 
         map.insert("connections", list);
+
+        // 13. Save recent connections
+        // todo: refactor
+        QVariantList tlist;
+        QVariantMap tmap;
+        for (auto const& rconn : _recentConnections) {
+            tmap.insert("uuid", rconn.uuid);
+            tmap.insert("name", QString::fromStdString(rconn.name));
+            tlist.append(tmap);
+        }
+        map.insert("recentConnections", tlist);
+
         map.insert("autoExec", _autoExec);
         map.insert("minimizeToTray", _minimizeToTray);
         map.insert("toolbars", _toolbars);
         map.insert("imported", _imported);
+        map.insert("uuid", _uuid);
 
         return map;
     }
 
     /**
-     * Adds connection to the end of list
+     * Adds connection to the end of list and set it's uniqueID
      */
     void SettingsManager::addConnection(ConnectionSettings *connection)
     {
         _connections.push_back(connection);
+        connection->setUniqueId(_uniqueIdCounter++);
     }
 
     /**
@@ -305,6 +371,58 @@ namespace Robomongo
             _connections.erase(it);
             delete connection;
         }
+    }
+
+    void SettingsManager::addRecentConnection(ConnectionSettings *connection)
+    {
+        _recentConnections.push_back(RecentConnection(connection->uuid(), connection->connectionName()));
+    }
+
+    void SettingsManager::deleteRecentConnection(ConnectionSettings *conn)
+    {
+        for (int i = 0; i < _recentConnections.size(); ++i) {
+            if (_recentConnections[i].uuid == conn->uuid())
+                _recentConnections.erase(_recentConnections.begin() + i);   // todo
+        }
+    }
+
+    void SettingsManager::setRecentConnections(std::vector<ConnectionSettings const*> const& recentConns)
+    {
+        _recentConnections.clear();
+        for(auto rconn : recentConns)
+            _recentConnections.push_back(RecentConnection(rconn->uuid(), rconn->connectionName()));
+    }
+
+    void SettingsManager::clearRecentConnections()
+    {
+        _recentConnections.clear();
+    }
+
+    ConnectionSettings* SettingsManager::getConnectionSettings(int uniqueId)
+    {
+        for (auto const& connSettings : _connections){
+            if (connSettings->uniqueId() == uniqueId)
+                return connSettings;
+        }
+
+        LOG_MSG("Failed to find connection settings object by unique ID.", mongo::logger::LogSeverity::Warning());
+        return nullptr;
+    }
+
+    ConnectionSettings* SettingsManager::getConnectionSettingsByUuid(QString const& uuid) const
+    {
+        for (auto const& connSettings : _connections){
+            if (connSettings->uuid() == uuid)
+                return connSettings;
+        }
+
+        LOG_MSG("Failed to find connection settings object by UUID.", mongo::logger::LogSeverity::Warning());
+        return nullptr;
+    }
+
+    ConnectionSettings* SettingsManager::getConnectionSettingsByUuid(std::string const& uuid) const
+    {
+        return getConnectionSettingsByUuid(QString::fromStdString(uuid));
     }
 
     void SettingsManager::setCurrentStyle(const QString& style)
@@ -337,38 +455,39 @@ namespace Robomongo
         if (_imported)
             return;
 
-        // todo: these functions should return bool
-        importConnectionsFrom_0_8_5_to_0_9();
-        importConnectionsFrom_0_9_to_1_0();
-
-        // Mark as imported
-        setImported(true);
+        // Find and import 'only' from the latest version
+        for (auto const& configFileAndImportFunction : _configFilesAndImportFunctions) {
+            if (QFile::exists(configFileAndImportFunction.file)) {
+                configFileAndImportFunction.import();
+                setImported(true);  // Mark as imported
+                return;
+            }
+        }
     }
 
-    void SettingsManager::importConnectionsFrom_0_8_5_to_0_9() 
+    bool SettingsManager::importConnectionsFrom_0_8_5_to_0_9()
     {
         // Load old configuration file (used till version 0.8.5)
-        const QString oldConfigPath = QString("%1/.config/robomongo/robomongo.json").arg(QDir::homePath());
 
-        if (!QFile::exists(oldConfigPath))
-            return;
+        if (!QFile::exists(CONFIG_FILE_0_8_5))
+            return false;
 
-        QFile oldConfigFile(oldConfigPath);
+        QFile oldConfigFile(CONFIG_FILE_0_8_5);
         if (!oldConfigFile.open(QIODevice::ReadOnly))
-            return;
+            return false;
 
         bool ok;
         QJson::Parser parser;
         QVariantMap vmap = parser.parse(oldConfigFile.readAll(), &ok).toMap();
         if (!ok)
-            return;
+            return false;
 
         QVariantList vconns = vmap.value("connections").toList();
-        for (QVariantList::iterator itconn = vconns.begin(); itconn != vconns.end(); ++itconn) 
+        for (QVariantList::iterator itconn = vconns.begin(); itconn != vconns.end(); ++itconn)
         {
             QVariantMap vconn = (*itconn).toMap();
 
-            ConnectionSettings *conn = new ConnectionSettings();
+            auto conn = new ConnectionSettings(false);
             conn->setImported(true);
             conn->setConnectionName(QtUtils::toStdString(vconn.value("connectionName").toString()));
             conn->setServerHost(QtUtils::toStdString(vconn.value("serverHost").toString().left(300)));
@@ -403,7 +522,7 @@ namespace Robomongo
             for (QVariantList::const_iterator itcred = vcreds.begin(); itcred != vcreds.end(); ++itcred) {
                 QVariantMap vcred = (*itcred).toMap();
 
-                CredentialSettings *cred = new CredentialSettings();
+                auto cred = new CredentialSettings();
                 cred->setUserName(QtUtils::toStdString(vcred.value("userName").toString()));
                 cred->setUserPassword(QtUtils::toStdString(vcred.value("userPassword").toString()));
                 cred->setDatabaseName(QtUtils::toStdString(vcred.value("databaseName").toString()));
@@ -449,36 +568,38 @@ namespace Robomongo
             if (!matched)
                 addConnection(conn);
         }
+
+        return true;
     }
 
 
-    void SettingsManager::importConnectionsFrom_0_9_to_1_0()
+    bool SettingsManager::importConnectionsFrom_0_9_to_1_0()
     {
-        auto const& oldConfigPath = QString("%1/.config/robomongo/0.9/robomongo.json").arg(QDir::homePath());
+        if (!QFile::exists(CONFIG_FILE_0_9))
+            return false;
 
-        if (!QFile::exists(oldConfigPath))
-            return;
-
-        QFile oldConfigFile(oldConfigPath);
+        QFile oldConfigFile(CONFIG_FILE_0_9);
         if (!oldConfigFile.open(QIODevice::ReadOnly))
-            return;
+            return false;
 
         bool ok;
         QJson::Parser parser;
         QVariantMap vmap = parser.parse(oldConfigFile.readAll(), &ok).toMap();
         if (!ok)
-            return;
+            return false;
 
         QVariantList const& vconns = vmap.value("connections").toList();
         for (auto const& vcon : vconns)
         {
             QVariantMap const& vconn = vcon.toMap();
-            auto connSettings = new ConnectionSettings();
+            auto connSettings = new ConnectionSettings(false);
             connSettings->fromVariant(vconn);
             connSettings->setImported(true);
 
             addConnection(connSettings);
         }
+
+        return true;
     }
 
     int SettingsManager::importedConnectionsCount() {

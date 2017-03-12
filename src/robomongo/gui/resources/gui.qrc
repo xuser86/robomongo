@@ -32,6 +32,7 @@
         <file>icons/close_2_16x16.png</file>
         <file>icons/text2_16x16.png</file>
         <file>icons/mongodb_16x16.png</file>
+        <file>icons/mongodb_icon_for_MAC.png</file>
         <file>icons/connect_24x24.png</file>
         <file>icons/server_16x16.png</file>
         <file>icons/server_primary_16x16.png</file>
@@ -71,5 +72,9 @@
         <file>icons/show_64x64.png</file>
         <file>icons/export_64x64.png</file>
         <file>icons/import_64x64.png</file>
+        <file>icons/plus_sign.png</file>
+        <file>icons/minus_sign.png</file>
+        <file>icons/delete.png</file>
+        <file>icons/delete_mouse_hovered.png</file>
     </qresource>
 </RCC>

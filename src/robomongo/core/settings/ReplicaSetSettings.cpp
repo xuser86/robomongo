@@ -28,7 +28,6 @@ namespace Robomongo
     {
         QVariantMap map;
         map.insert("setName", QString::fromStdString(_setName));
-        // todo: refactor
         int idx = 0;
         for (std::string const& str : _members) {
             map.insert(QString::number(idx), QtUtils::toQString(str));
@@ -43,7 +42,6 @@ namespace Robomongo
         setSetName(map.value("setName").toString().toStdString());
         // Extract and set replica members
         std::vector<std::string> vec;
-        // todo: refactor
         auto itr = map.begin();
         int idx = 0;
         do
@@ -57,6 +55,13 @@ namespace Robomongo
         // Extract and set read reference
         setReadPreference(static_cast<ReadPreference>(map.value("readPreference").toInt()));
     }
+    
+    void ReplicaSetSettings::setMembers(const std::vector<std::string>& members)
+    {
+        _members.clear();
+        for (auto const& member : members)
+            _members.push_back(member);
+    }
 
     void ReplicaSetSettings::setMembers(const std::vector<std::pair<std::string, bool>>& membersAndHealts)
     {
@@ -66,13 +71,12 @@ namespace Robomongo
             _members.push_back(memberAndHealth.first);
     }
 
-    const std::vector<mongo::HostAndPort> ReplicaSetSettings::membersToHostAndPort() const 
+    std::vector<mongo::HostAndPort> ReplicaSetSettings::membersToHostAndPort() const 
     {
         std::vector<mongo::HostAndPort> membersHostAndPort;
-        for (auto const& member : _members)
-        {
+        for (auto const& member : _members)        
             membersHostAndPort.push_back(mongo::HostAndPort(member));
-        }
+        
         return membersHostAndPort;
     }
 

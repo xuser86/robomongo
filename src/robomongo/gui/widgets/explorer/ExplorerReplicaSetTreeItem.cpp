@@ -20,7 +20,6 @@
 
 namespace
 {
-    // todo : modify or move to a common header
      void openCurrentServerShell(Robomongo::MongoServer* server, Robomongo::ConnectionSettings* connSettings, 
                                  const QString &script)
      {
@@ -33,7 +32,8 @@ namespace Robomongo
 {
     ExplorerReplicaSetTreeItem::ExplorerReplicaSetTreeItem(QTreeWidgetItem *parent, MongoServer *const server, 
         const mongo::HostAndPort& repMemberHostAndPort, const bool isPrimary, const bool isUp)
-        : BaseClass(parent),
+        : 
+        BaseClass(parent),
         _repMemberHostAndPort(repMemberHostAndPort),
         _isPrimary(isPrimary),
         _isUp(isUp),
@@ -46,18 +46,19 @@ namespace Robomongo
         _connSettings->setServerHost(_repMemberHostAndPort.host());
         _connSettings->setServerPort(_repMemberHostAndPort.port());
         _connSettings->setReplicaSet(false);  
-        _connSettings->replicaSetSettings()->setMembers(std::vector<std::string>()); // todo: replicaSetSettings->clear()
+        _connSettings->replicaSetSettings()->deleteAllMembers();
 
         // Add Actions
         auto openShellAction = new QAction("Open Shell", this);
+#ifdef __APPLE__
+        openShellAction->setIcon(GuiRegistry::instance().mongodbIconForMAC());
+#else
         openShellAction->setIcon(GuiRegistry::instance().mongodbIcon());
+#endif
         VERIFY(connect(openShellAction, SIGNAL(triggered()), SLOT(ui_openShell())));
 
         auto openDirectConnection = new QAction("Open Direct Connection", this);
         VERIFY(connect(openDirectConnection, SIGNAL(triggered()), SLOT(ui_openDirectConnection())));
-
-        auto refreshServer = new QAction("Refresh", this);
-        VERIFY(connect(refreshServer, SIGNAL(triggered()), SLOT(ui_refreshServer())));
 
         auto serverStatus = new QAction("Server Status", this);
         VERIFY(connect(serverStatus, SIGNAL(triggered()), SLOT(ui_serverStatus())));
@@ -73,7 +74,6 @@ namespace Robomongo
 
         BaseClass::_contextMenu->addAction(openShellAction);
         BaseClass::_contextMenu->addAction(openDirectConnection);
-        BaseClass::_contextMenu->addAction(refreshServer);
         BaseClass::_contextMenu->addSeparator();
         BaseClass::_contextMenu->addAction(serverStatus);
         BaseClass::_contextMenu->addAction(serverHostInfo);
@@ -81,30 +81,23 @@ namespace Robomongo
         BaseClass::_contextMenu->addSeparator();
         BaseClass::_contextMenu->addAction(showLog);
 
-        //BaseClass::_contextMenu->setHidden(!_isUp);
-
-        // Todo: remove ?
-        //_bus->subscribe(this, DatabaseListLoadedEvent::Type, _server);
-        //_bus->subscribe(this, MongoServerLoadingDatabasesEvent::Type, _server);
-
-        updateState(_isUp, _isPrimary);
+        updateTextAndIcon(_isUp, _isPrimary);
 
         setExpanded(true);
         setChildIndicatorPolicy(QTreeWidgetItem::DontShowIndicator);
     }
 
-    void ExplorerReplicaSetTreeItem::updateState(bool isUp, bool isPrimary)
+    void ExplorerReplicaSetTreeItem::updateTextAndIcon(bool isUp, bool isPrimary)
     {
         _isUp = isUp;
         _isPrimary = isPrimary;
 
         QString stateStr("[Unknown]");
-        if (!_isUp) {
-            stateStr = "[Not Reachable]";
-        }
-        else {
+        if (_isUp)
             stateStr = _isPrimary ? "[Primary]" : "[Secondary]";
-        }
+        else
+            stateStr = "[Not Reachable]";
+
         setDisabled(_isUp ? false : true);
         setText(0, QString::fromStdString(_repMemberHostAndPort.toString()) + " " + stateStr);
         setIcon(0, _isPrimary ? GuiRegistry::instance().serverPrimaryIcon()                               
@@ -140,10 +133,4 @@ namespace Robomongo
     {
         AppRegistry::instance().app()->openServer(_connSettings.get(), ConnectionPrimary);
     }
-
-    void ExplorerReplicaSetTreeItem::ui_refreshServer()
-    {
-        // todo
-    }
-
 }

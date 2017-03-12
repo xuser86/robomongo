@@ -34,11 +34,13 @@ namespace Robomongo
 
     struct ConnectionInfo
     {
-        ConnectionInfo();
-        ConnectionInfo(const std::string &address, const std::vector<std::string> &databases, float version, const std::string& storageEngine);
+        ConnectionInfo(std::string const& uuid);
+        ConnectionInfo(const std::string &address, const std::vector<std::string> &databases, float version, 
+                       const std::string& storageEngine, std::string const& uuid);
         const std::string _address;
         const std::vector<std::string> _databases;
         const float _version;
         const std::string _storageEngineType;
+        std::string const _uuid;
     };
 }

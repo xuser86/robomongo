@@ -6,6 +6,7 @@
 #include "robomongo/core/domain/MongoShell.h"
 #include "robomongo/core/domain/MongoCollection.h"
 #include "robomongo/core/settings/ConnectionSettings.h"
+#include "robomongo/core/settings/ReplicaSetSettings.h"
 #include "robomongo/core/settings/SshSettings.h"
 #include "robomongo/core/settings/SslSettings.h"
 #include "robomongo/core/mongodb/SshTunnelWorker.h"
@@ -144,7 +145,7 @@ namespace Robomongo
         connection->setDefaultDatabase(collection->database()->name());
         QString script = detail::buildCollectionQuery(collection->name(), "find({})");
         openShell(collection->database()->server(), connection, ScriptInfo(script, true, CursorPosition(0, -2), 
-            QtUtils::toQString(collection->database()->name()), filePathToSave));
+                  QtUtils::toQString(collection->database()->name()), filePathToSave));
     }
 
     void App::openShell(MongoServer *server, const QString &script, const std::string &dbName,
@@ -212,18 +213,19 @@ namespace Robomongo
             connSettingsClone->setServerPort(localport);
         }
 
-        MongoServer *server = new MongoServer(serverHandle, connSettings, type);
+        MongoServer *server = new MongoServer(serverHandle, connSettingsClone, type);
         _servers.push_back(server);
 
         server->runWorkerThread();
 
-        QString serverAddress = "unknown";
-        if (connSettings->isReplicaSet()) {
-            serverAddress = QString::fromStdString(connSettings->connectionName()) + " [Replica Set]";
-        }
-        else {
-            serverAddress = QString::fromStdString(connSettings->getFullAddress());
-        }
+        auto replicaSetStr = QString::fromStdString(connSettings->connectionName()) + " [Replica Set]";
+        replicaSetStr = (connSettings->replicaSetSettings()->members().size() > 0) 
+                        ? replicaSetStr + QString::fromStdString(connSettings->replicaSetSettings()->members()[0])
+                        : replicaSetStr + "";
+        
+        QString serverAddress = connSettings->isReplicaSet()
+                                ? replicaSetStr
+                                : QString::fromStdString(connSettings->getFullAddress());
 
         LOG_MSG(QString("Connecting to %1...").arg(serverAddress), mongo::logger::LogSeverity::Info());
         server->tryConnect();
@@ -270,7 +272,6 @@ namespace Robomongo
                                         ConnectionFailedEvent::Reason reason) {
         _bus->publish(new ConnectionFailedEvent(this, serverHandle, type, errormsg, reason));
     }
-
 
     bool App::askSslPassphrasePromptDialog(ConnectionSettings *connSettings) const
     {

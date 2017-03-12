@@ -14,7 +14,7 @@ namespace Robomongo
     class MongoShell;
     class BsonTreeItem;
     class InsertDocumentResponse;
-    class RemoveDocumentResponse;
+    struct RemoveDocumentResponse;
 
     namespace detail
     {
@@ -45,7 +45,7 @@ namespace Robomongo
         void initMenu(QMenu *const menu, BsonTreeItem *const item);
         void initMultiSelectionMenu(QMenu *const menu);
 
-        void deleteDocuments(std::vector<BsonTreeItem*> items, bool force);
+        void deleteDocuments(std::vector<BsonTreeItem*> const& items, bool force);
         void handleDeleteCommand();
 
     public Q_SLOTS:

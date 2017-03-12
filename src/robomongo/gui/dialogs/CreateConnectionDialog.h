@@ -16,7 +16,11 @@ namespace Robomongo
     class ConnectionSettings;
 
     /**
-    * @brief This Dialog allows to edit single connection
+    * @brief This class is not finished, it is still under development.
+    *        It was planned to be used as very first dialog right after 'create' new
+    *        connection is clicked on connections dialog in order to provide user 
+    *        some create more friendly create connection options with pictures 
+    *        e.g. create connection from URI string, create replica set or create single server.
     */
     class CreateConnectionDialog : public QDialog
     {
@@ -32,7 +36,7 @@ namespace Robomongo
         ConnectionSettings *const connection() const { return _connection; }
 
         // todo:
-        //mongo::MongoURI getMongoUri() const { return _mongoUri; }
+        // mongo::MongoURI getMongoUri() const { return _mongoUri; }
         bool fromURI() const { return _fromURI; }
 
         std::unique_ptr<mongo::StatusWith<mongo::MongoURI>> getMongoUriWithStatus() 

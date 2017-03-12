@@ -108,9 +108,10 @@ namespace Robomongo
         MongoNamespace ns(dbName, "system.users");
         mongo::BSONObj obj = user.toBson();
 
-        if (!overwrite) {
+        if (!overwrite) {   // create new user
             _dbclient->insert(ns.toString(), obj);
-        } else {
+        } 
+        else {  // update existing user
             mongo::BSONElement id = obj.getField("_id");
             mongo::BSONObjBuilder builder;
             builder.append(id);
@@ -119,6 +120,10 @@ namespace Robomongo
 
             _dbclient->update(ns.toString(), query, obj, true, false);
         }
+
+        std::string errorStr = _dbclient->getLastError();
+        if (!errorStr.empty())
+            throw mongo::DBException(errorStr, 0);
     }
 
     void MongoClient::dropUser(const std::string &dbName, const mongo::OID &id)
@@ -131,6 +136,10 @@ namespace Robomongo
         mongo::Query query(bsonQuery);
 
         _dbclient->remove(ns.toString(), query, true);
+
+        std::string errorStr = _dbclient->getLastError();
+        if (!errorStr.empty())
+            throw mongo::DBException(errorStr, 0);
     }
 
     std::vector<MongoFunction> MongoClient::getFunctions(const std::string &dbName)
@@ -293,35 +302,45 @@ namespace Robomongo
         _dbclient->dropIndex(collection.ns().toString(), indexName);
     }
 
-    void MongoClient::createFunction(const std::string &dbName, const MongoFunction &fun, const std::string &existingFunctionName /* = QString() */)
+    void MongoClient::createFunction(const std::string &dbName, const MongoFunction &fun, 
+                                     const std::string &existingFunctionName /* = QString() */)
     {
         MongoNamespace ns(dbName, "system.js");
         mongo::BSONObj obj = fun.toBson();
 
-        if (existingFunctionName.empty()) { // this is insert
+        if (existingFunctionName.empty()) { // create new function
             _dbclient->insert(ns.toString(), obj);
+            std::string errorStr = _dbclient->getLastError();
+            if (!errorStr.empty())
+                throw mongo::DBException(errorStr, 0);
         } else { // this is update
 
             std::string name = fun.name();
 
-            if (existingFunctionName == name) {
+            if (existingFunctionName == name) { // update existing function code
                 mongo::BSONObjBuilder builder;
                 builder.append("_id", name);
                 mongo::BSONObj bsonQuery = builder.obj();
                 mongo::Query query(bsonQuery);
 
                 _dbclient->update(ns.toString(), query, obj, true, false);
-            } else {
+                std::string errorStr = _dbclient->getLastError();
+                if (!errorStr.empty())
+                    throw mongo::DBException(errorStr, 0);
+            } else {    // update function name (remove & insert)
                 _dbclient->insert(ns.toString(), obj);
-                std::string res = _dbclient->getLastError();
+                std::string errorStr = _dbclient->getLastError();
 
                 // if no errors
-                if (res.empty()) {
+                if (errorStr.empty()) {
                     mongo::BSONObjBuilder builder;
                     builder.append("_id", existingFunctionName);
                     mongo::BSONObj bsonQuery = builder.obj();
                     mongo::Query query(bsonQuery);
                     _dbclient->remove(ns.toString(), query, true);
+                }
+                else {
+                    throw mongo::DBException(errorStr, 0);
                 }
             }
         }
@@ -337,6 +356,9 @@ namespace Robomongo
         mongo::Query query(bsonQuery);
 
         _dbclient->remove(ns.toString(), query, true);
+        std::string errorStr = _dbclient->getLastError();
+        if (!errorStr.empty())
+            throw mongo::DBException(errorStr, 0);
     }
 
     void MongoClient::createDatabase(const std::string &dbName)
@@ -351,7 +373,7 @@ namespace Robomongo
 
         // If <dbName>.temp already exists, stop.
         if (_dbclient->exists(ns.toString()))
-            return;
+            throw mongo::DBException(dbName + ".temp already exists.", 0);
 
         // Building { _id : "temp" } document
         mongo::BSONObjBuilder builder;
@@ -360,6 +382,9 @@ namespace Robomongo
 
         // Insert this document
         _dbclient->insert(ns.toString(), obj);
+        std::string errorStr = _dbclient->getLastError();
+        if (!errorStr.empty())
+            throw mongo::DBException(errorStr, 0);
 
         // Drop temp collection
         _dbclient->dropCollection(ns.toString());
@@ -367,7 +392,14 @@ namespace Robomongo
 
     void MongoClient::dropDatabase(const std::string &dbName)
     {
-        _dbclient->dropDatabase(dbName);
+        mongo::BSONObj result;
+        if (!_dbclient->dropDatabase(dbName, &result)) { 
+            std::string errStr = result.getStringField("errmsg");
+            if (errStr.empty())
+                errStr = "Failed to get error message.";
+
+            throw mongo::DBException(errStr, 0);
+        }
     }
 
     void MongoClient::createCollection(const std::string& ns, long long size, bool capped, int max, 
@@ -391,7 +423,19 @@ namespace Robomongo
         }
         b.appendElements(extraOptions);
 
-        _dbclient->runCommand(db.c_str(), b.done(), *info);
+        if (!_dbclient->exists(ns)) {
+            mongo::BSONObj result;
+            if (!_dbclient->runCommand(db.c_str(), b.done(), result)) {
+                std::string errStr = result.getStringField("errmsg");
+                if (errStr.empty())
+                    errStr = "Failed to get error message.";
+
+                throw mongo::DBException(errStr, 0);
+            }
+        }
+        else {
+            throw mongo::DBException("Collection with same name already exists.", 0);
+        }
     }
 
     void MongoClient::renameCollection(const MongoNamespace &ns, const std::string &newCollectionName)
@@ -421,7 +465,7 @@ namespace Robomongo
 
         if (!_dbclient->exists(newCollection.toString())) {
             mongo::BSONObj result;
-            // todo: Issue #1258 : Duplicate Collection should pass advanced collection options.
+            // todo: Issue #1258 : Duplicate Collection should support advanced collection options.
             //       _dbclient->createCollection() should be called with properties of source collection
             //       not with default parameters as below.
             if (!_dbclient->createCollection(newCollection.toString(), 0, false, 0, &result)) {
@@ -558,11 +602,10 @@ namespace Robomongo
     std::vector<MongoCollectionInfo> MongoClient::runCollStatsCommand(const std::vector<std::string> &namespaces)
     {
         std::vector<MongoCollectionInfo> infos;
-        for (std::vector<std::string>::const_iterator it = namespaces.begin(); it != namespaces.end(); ++it) {
-            MongoCollectionInfo info = runCollStatsCommand(*it);
-            if (info.ns().isValid()) {
+        for (auto const& ns : namespaces) {
+            MongoCollectionInfo info = runCollStatsCommand(ns);
+            if (info.ns().isValid()) 
                 infos.push_back(info);
-            }            
         }
         return infos;
     }

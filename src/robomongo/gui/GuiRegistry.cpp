@@ -311,6 +311,18 @@ namespace Robomongo
         return icon;
     }
 
+    const QIcon &GuiRegistry::plusIcon() const
+    {
+        static const QIcon icon {":/robomongo/icons/plus_sign.png"};
+        return icon;
+    }
+
+    const QIcon &GuiRegistry::minusIcon() const
+    {
+        static const QIcon icon {":/robomongo/icons/minus_sign.png"};
+        return icon;
+    }
+
     const QBrush &GuiRegistry::typeBrush() const
     {
         static const QBrush typeBrush = QBrush(QColor(150, 150, 150));
@@ -333,6 +345,12 @@ namespace Robomongo
     const QIcon &GuiRegistry::mongodbIcon() const
     {
         static const QIcon mongodbIc = QIcon(":/robomongo/icons/mongodb_16x16.png");
+        return mongodbIc;
+    }
+    
+    const QIcon &GuiRegistry::mongodbIconForMAC() const
+    {
+        static const QIcon mongodbIc = QIcon(":/robomongo/icons/mongodb_icon_for_MAC.png");
         return mongodbIc;
     }
 
@@ -364,6 +382,18 @@ namespace Robomongo
     {
         static const QIcon importIc = QIcon(":/robomongo/icons/import_64x64.png");
         return importIc;
+    }
+
+    const QIcon &GuiRegistry::deleteIcon() const
+    {
+        static const QIcon icon(":/robomongo/icons/delete.png");
+        return icon;
+    }
+
+    const QIcon &GuiRegistry::deleteIconMouseHovered() const
+    {
+        static const QIcon icon(":/robomongo/icons/delete_mouse_hovered.png");
+        return icon;
     }
 
     const QIcon &GuiRegistry::mainWindowIcon() const

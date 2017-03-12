@@ -38,7 +38,7 @@ namespace Robomongo
         //setAttribute(Qt::WA_DeleteOnClose);
 
         // Splitter-Left
-        auto label01 = new QLabel("Replica Set or Sharded Cluster");
+        auto label01 = new QLabel("Replica Set");
         label01->setStyleSheet("font-weight: bold");
         auto wid1 = new QLabel;
         auto repSetImage = QPixmap("C:\\Users\\gsimsek\\Google Drive\\Cases - Drive\\replica_sets\\icons\\repset.png");
@@ -49,16 +49,6 @@ namespace Robomongo
         auto const& createConnStr= QString("b) <a style='color: %1' href='create'>Create connection manually</a>").arg("#106CD6");
         auto createConnLabel = new QLabel(createConnStr);
         VERIFY(connect(createConnLabel, SIGNAL(linkActivated(QString)), this, SLOT(on_createConnLinkActivated())));
-
-        //auto nameLineEdit = new QLineEdit("New Connection");
-        //auto nameLay = new QGridLayout;
-        ////connectionLayout->setAlignment(Qt::AlignTop);
-        //nameLay->setColumnStretch(1, 1);
-        ////nameLay->setColumnMinimumWidth(0, _passwordLabel->sizeHint().width() + 5);
-        //nameLay->addWidget(new QLabel("Connection Name:"),  0, 0, Qt::AlignLeft);
-        //nameLay->addWidget(nameLineEdit,                    0, 1);
-        //auto nameWid = new QWidget;
-        //nameWid->setLayout(nameLay);
 
         auto splitterL = new QSplitter;
         splitterL->setOrientation(Qt::Vertical);
@@ -177,7 +167,7 @@ namespace Robomongo
         }
 
         auto uri = uriWithStatus->getValue();
-        ConnectionSettings connection(uri);    // todo: refactor
+        ConnectionSettings connection(uri, true);    // todo: refactor
         ConnectionDiagnosticDialog diag(&connection, this);
         if (!diag.continueExec())
             return;

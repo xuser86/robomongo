@@ -56,10 +56,13 @@ set(SOURCES
     core/mongodb/ReplicaSet.cpp
     core/settings/SettingsManager.cpp
     core/AppRegistry.cpp
+    utils/string_operations.cpp
+    utils/common.cpp
 
     # Isolated Scope #3
     gui/GuiRegistry.cpp
     gui/dialogs/AboutDialog.cpp
+    gui/dialogs/EulaDialog.cpp
     gui/dialogs/ConnectionAdvancedTab.cpp
     gui/dialogs/ConnectionAuthTab.cpp
     gui/dialogs/ConnectionBasicTab.cpp
@@ -122,6 +125,7 @@ set(SOURCES
     gui/widgets/workarea/QueryWidget.cpp
     gui/widgets/workarea/WorkAreaTabBar.cpp
     gui/widgets/workarea/WorkAreaTabWidget.cpp
+    gui/widgets/workarea/WelcomeTab.cpp
 
     # Final scope
     gui/widgets/LogWidget.cpp
@@ -134,6 +138,7 @@ set(SOURCES
     core/settings/ReplicaSetSettings.cpp
     core/mongodb/SshTunnelWorker.cpp
 
+    resources/robo.qrc
     gui/resources/gui.qrc
 )
 
@@ -144,6 +149,7 @@ add_executable(robomongo MACOSX_BUNDLE WIN32 app/main.cpp ${SOURCES})
 target_link_libraries(robomongo
     PRIVATE
         Qt5::Widgets
+        Qt5::Network
         qjson
         qscintilla
         mongodb

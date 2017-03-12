@@ -3,21 +3,25 @@
 #include <QLabel>
 #include <QGridLayout>
 #include <QLineEdit>
+/* --- Disabling unfinished export URI connection string feature 
 #include <QPushButton>
 #include <QMessageBox>
 #include <QClipboard>
 #include <QApplication>
 #include <QCheckBox>
 #include <QToolTip>
+*/
 
 #include <mongo/client/mongo_uri.h>
 
 #include "robomongo/core/settings/ConnectionSettings.h"
+#include "robomongo/core/utils/QtUtils.h"
+/* --- Disabling unfinished export URI connection string feature 
 #include "robomongo/core/settings/CredentialSettings.h"
 #include "robomongo/core/settings/ReplicaSetSettings.h"
 #include "robomongo/core/settings/SslSettings.h"
-#include "robomongo/core/utils/QtUtils.h"
 #include "robomongo/gui/utils/GuiConstants.h"
+*/
 
 namespace Robomongo
 {
@@ -34,6 +38,7 @@ namespace Robomongo
 
         _defaultDatabaseName = new QLineEdit(QtUtils::toQString(_settings->defaultDatabase()));
 
+        /* --- Disabling unfinished export URI connection string feature
         _uriString = new QLineEdit;
         _uriString->setReadOnly(true);
 
@@ -55,16 +60,18 @@ namespace Robomongo
         hlay->addWidget(_includePasswordCheckBox);
         hlay->addWidget(generateButton, Qt::AlignLeft);
         hlay->addWidget(_copyButton, Qt::AlignLeft);
+        */
 
         auto mainLayout = new QGridLayout;
         mainLayout->setAlignment(Qt::AlignTop);
         mainLayout->addWidget(new QLabel("Default Database:"),          1, 0);
         mainLayout->addWidget(_defaultDatabaseName,                     1, 1, 1, 2);
         mainLayout->addWidget(defaultDatabaseDescriptionLabel,          2, 1, 1, 2);
+        /* --- Disabling unfinished export URI connection string feature
         mainLayout->addWidget(new QLabel{ "URI Connection String:" },   3, 0);
         mainLayout->addWidget(_uriString,                               3, 1);
         mainLayout->addLayout(hlay,                                     4, 1);
-
+        */
         setLayout(mainLayout);
     }
 
@@ -73,13 +80,16 @@ namespace Robomongo
         _settings->setDefaultDatabase(QtUtils::toStdString(_defaultDatabaseName->text()));
     }
 
+    /* --- Disabling unfinished export URI connection string feature
     void ConnectionAdvancedTab::on_generateButton_clicked()
     {
         if (_settings->isReplicaSet()) {
-            // todo: handle setname will be empty initially
+            // todo: 
+            // handle set name will be empty initially. It will be available(cached) after first
+            // successful connection.
             std::string connStr = { "mongodb://" };
 
-            // todo: 
+            // todo: which credential to use if there are more than one?
             if (_settings->hasEnabledPrimaryCredential() && !_settings->credentials().isEmpty()) {
                 connStr.append(_settings->primaryCredential()->userName() + ":");
                 connStr.append(_includePasswordCheckBox->isChecked() ? 
@@ -96,7 +106,6 @@ namespace Robomongo
 
             connStr.append("replicaSet=" + _settings->replicaSetSettings()->setName());
 
-            // todo: move ssl enabled into settings
             if (_settings->sslSettings()->sslEnabled())
                 connStr.append("&ssl=true");
 
@@ -104,9 +113,6 @@ namespace Robomongo
                 connStr.append("&authSource=" + _settings->primaryCredential()->databaseName());
 
             // todo: validate connStr
-            //auto uriWithStatus = mongo::StatusWith<mongo::MongoURI>(mongo::MongoURI::parse(connStr));
-            //auto str2 = uriWithStatus.getValue().toString();
-
             _uriString->setText(QString::fromStdString(connStr));
             _uriString->setCursorPosition(QTextCursor::Start);
 
@@ -134,7 +140,6 @@ namespace Robomongo
 
         auto posUnderGenerateButton = QPoint(_copyButton->pos().x()-100, _copyButton->y()+20);
         QToolTip::showText(mapToGlobal(posUnderGenerateButton), "Copied into clipboard", nullptr, QRect(), 2000);
-        //QMessageBox::information(this, tr("Robomongo"), tr("Copied into clipboard"));
     }
 
     void ConnectionAdvancedTab::on_includePasswordsCheckBox_toggle(bool checked)
@@ -144,6 +149,6 @@ namespace Robomongo
 
         on_generateButton_clicked();
     }
-
+    */
 }
 

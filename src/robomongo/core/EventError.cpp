@@ -1,5 +1,6 @@
 #include "robomongo/core/EventError.h"
 
+#include "robomongo/utils/string_operations.h"
 
 namespace Robomongo
 {
@@ -8,11 +9,12 @@ namespace Robomongo
 
     EventError::EventError(const std::string &errorMessage, ErrorCode errorCode /*= Unknown*/,
                            bool showErrorWindow /* = true */) :
-        _errorMessage(errorMessage),
+        _errorMessage(captilizeFirstChar(errorMessage)),
+        _errorCode(errorCode),
         _showErrorWindow(showErrorWindow),
         _isNull(false) {}
 
-    EventError::EventError(const std::string &errorMessage, ReplicaSet replicaSetInfo, 
+    EventError::EventError(const std::string &errorMessage, ReplicaSet const& replicaSetInfo, 
                            bool showErrorWindow /* = true */ ) :
         _errorMessage(errorMessage), 
         _errorCode(SetPrimaryUnreachable),

@@ -12,12 +12,12 @@ namespace Robomongo
     class App;
 
     // Messages
-    class EstablishConnectionResponse;
+    struct EstablishConnectionResponse;
     struct RefreshReplicaSetFolderResponse;
     class LoadDatabaseNamesResponse;
     class InsertDocumentResponse;
-    class CreateDatabaseResponse;
-    class DropDatabaseResponse;
+    struct CreateDatabaseResponse;
+    struct DropDatabaseResponse;
 
     /**
      * @brief MongoServer represents active connection to MongoDB server.
@@ -41,7 +41,7 @@ namespace Robomongo
         void runWorkerThread();
 
         /**
-         * @brief Try to connect to MongoDB server.
+         * @brief Try to connect to MongoDB single server or replica set.
          * @throws MongoException, if fails
          */
         void tryConnect();
@@ -49,14 +49,28 @@ namespace Robomongo
         /**
         * @brief Try to re-connect to MongoDB server in order to refresh connection view.
         *        Never shown in Explorer and can be used to refresh (via reconnecting) current connection view.
-        *        (i.e. db version, storage engine, current replica set primary, status of replica set etc...)
+        *        (i.e. db version, storage engine etc...)
         * @throws MongoException, if fails
         */
         void tryRefresh();
 
-        // todo
-        void tryRefreshReplicaSet();
-        void tryRefreshReplicaSetFolder(bool showLoading = true);
+        /**
+        * @brief Try to re-connect to MongoDB replica set in order to refresh connection view.
+        *        It is used to refresh (via reconnecting) current connection view.
+        *        (i.e. db version, storage engine, current replica set primary, status of replica set etc...)
+        *        It will update Explorer widgets depending on replica set status (online if primary reachable and
+        *        offline otherwise)
+        */
+        void tryRefreshReplicaSetConnection();
+
+        /**
+        * @brief Try to re-connect to MongoDB replica set in order to refresh connection view.
+        *        It is used to refresh (via reconnecting) current connection view.
+        *        (i.e. db version, storage engine, current replica set primary, status of replica set etc...)
+        *        It will update only 'Replica Set' folder widgets depending on replica set status 
+        *       (online if primary reachable and offline otherwise)
+        */
+        void tryRefreshReplicaSetFolder(bool expanded, bool showLoading = true);
 
         bool isConnected() const;
 
@@ -64,14 +78,15 @@ namespace Robomongo
         void createDatabase(const std::string &dbName);
         void dropDatabase(const std::string &dbName);
         QStringList getDatabasesNames() const;
-        QList<MongoDatabase*> const& databases() const { return _databases; }; // todo
+        QList<MongoDatabase*> const& databases() const { return _databases; };
         MongoDatabase *findDatabaseByName(const std::string &dbName) const;
 
         void insertDocuments(const std::vector<mongo::BSONObj> &objCont, const MongoNamespace &ns);
         void insertDocument(const mongo::BSONObj &obj, const MongoNamespace &ns);
         void saveDocuments(const std::vector<mongo::BSONObj> &objCont, const MongoNamespace &ns);
         void saveDocument(const mongo::BSONObj &obj, const MongoNamespace &ns);
-        void removeDocuments(mongo::Query query, const MongoNamespace &ns, bool justOne = true);
+        void removeDocuments(mongo::Query query, const MongoNamespace &ns, RemoveDocumentCount removeCount, 
+                             int index = 0);
         float version() const{ return _version; }
         const std::string& getStorageEngineType() const { return _storageEngineType; }
 
@@ -86,14 +101,8 @@ namespace Robomongo
         void loadDatabases();
         MongoWorker *const worker() const { return _worker; }
 
-        // todo: remove if not used
-        // --- Getters ---
         ReplicaSet* replicaSetInfo() const { return _replicaSetInfo.get(); }
-        std::string getRepSetName() const { return _repSetName; }
-        mongo::HostAndPort getRepPrimary() const { return _repPrimary; }
-        std::vector<std::pair<std::string, bool>> getRepMembersHealths() const { return _repMembersAndHealths; }
 
-        // todo
         void handle(ReplicaSetRefreshed *event);
 
     protected Q_SLOTS:
@@ -107,11 +116,13 @@ namespace Robomongo
 
     private:                 
         void clearDatabases();
-        void genericResponseHandler(Event *event, const std::string &userFriendlyMessage);
-        void handleReplicaSetRefreshEvents(bool isError, EventError eventError, ReplicaSet const& replicaSet);
+        void handleReplicaSetRefreshEvents(bool isError, EventError eventError, ReplicaSet const& replicaSet,
+                                           bool expanded);
+        void updateReplicaSetSettings(EstablishConnectionResponse* event);
+        void handleConnectionFailure(EstablishConnectionResponse* event);
 
         MongoWorker *_worker;
-        ConnectionSettings *_connSettings;
+        std::unique_ptr<ConnectionSettings> _connSettings;
         EventBus *_bus;
         App *_app;
 
@@ -122,13 +133,7 @@ namespace Robomongo
         int _handle;
 
         QList<MongoDatabase *> _databases;
-
-        // Replica Set Info
         std::unique_ptr<ReplicaSet> _replicaSetInfo;
-        // todo: remove
-        std::string _repSetName;
-        mongo::HostAndPort _repPrimary;
-        std::vector<std::pair<std::string, bool>> _repMembersAndHealths;   // todo: vector of pairs of host and health
     };
 
     class MongoServerLoadingDatabasesEvent : public Event
