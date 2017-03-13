@@ -40,6 +40,7 @@ namespace Robomongo
         void clear();
         void addChild(BsonTreeItem *item);
         void removeChild(BsonTreeItem *item);
+        void removeAllChilds();
         BsonTreeItem* child(unsigned pos) const;
         BsonTreeItem* childSafe(unsigned pos) const;
         BsonTreeItem* childByKey(const QString &val);

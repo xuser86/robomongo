@@ -10,11 +10,16 @@ namespace Robomongo
     BsonHeaderView::BsonHeaderView(Qt::Orientation orientation, QWidget *parent) 
         : QHeaderView(orientation,parent)
     {
-         
+         qDebug() << "creating " << this;
          VERIFY(connect(this, SIGNAL(sectionResized(int,int,int)), this, SLOT(_sectionResized(int,int,int))));
          
          _defaultHeaderState = true;
          _blockSectionResizedSlot = false;
+    }
+    
+    BsonHeaderView::~BsonHeaderView() 
+    {
+        qDebug() << "deleting " << this;
     }
     
     void BsonHeaderView::resizeEvent(QResizeEvent *event) 

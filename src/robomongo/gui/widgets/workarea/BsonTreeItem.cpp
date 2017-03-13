@@ -154,4 +154,9 @@ namespace Robomongo
     {
         _items.erase(std::remove_if(_items.begin(), _items.end(), removeIfFound(item)), _items.end());
     }
+
+    void BsonTreeItem::removeAllChilds()
+    {
+        _items.clear();
+    }
 }

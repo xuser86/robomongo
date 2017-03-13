@@ -6,6 +6,7 @@
 #include "robomongo/core/domain/MongoQueryInfo.h"
 #include "robomongo/core/Enums.h"
 #include <vector>
+#include "robomongo/gui/widgets/workarea/BsonHeaderView.h"
 
 namespace Robomongo
 {
@@ -30,6 +31,7 @@ namespace Robomongo
         OutputItemContentWidget(ViewMode viewMode, MongoShell *shell, const QString &type,
                                 const std::vector<MongoDocumentPtr> &documents, const MongoQueryInfo &queryInfo, 
                                 double secs, bool multipleResults, bool firstItem, bool lastItem, QWidget *parent);
+        ~OutputItemContentWidget();
         int _initialSkip;
         int _initialLimit;
         void update(const MongoQueryInfo &inf, const std::vector<MongoDocumentPtr> &documents);

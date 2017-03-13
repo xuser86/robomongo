@@ -4,6 +4,8 @@
 #include <QHeaderView>
 #include <Qsci/qscilexerjavascript.h>
 
+#include <QDebug>
+
 #include "robomongo/core/AppRegistry.h"
 #include "robomongo/core/settings/SettingsManager.h"
 #include "robomongo/core/utils/QtUtils.h"
@@ -14,6 +16,7 @@
 #include "robomongo/gui/widgets/workarea/JsonPrepareThread.h"
 #include "robomongo/gui/widgets/workarea/BsonTreeView.h"
 #include "robomongo/gui/widgets/workarea/BsonTreeModel.h"
+#include "robomongo/gui/widgets/workarea/BsonHeaderView.h"
 #include "robomongo/gui/widgets/workarea/BsonTableView.h"
 #include "robomongo/gui/widgets/workarea/BsonTableModel.h"
 #include "robomongo/gui/editors/PlainJavaScriptEditor.h"
@@ -48,6 +51,7 @@ namespace Robomongo
         _mod(NULL),
         _viewMode(viewMode)
     {
+        qDebug() << "creating " << this;
         setup(secs, multipleResults, firstItem, lastItem);
     }
 
@@ -78,9 +82,15 @@ namespace Robomongo
         _mod(NULL),
         _viewMode(viewMode)
     {
+        qDebug() << "creating " << this;
         setup(secs, multipleResults, firstItem, lastItem);
     }
 
+    OutputItemContentWidget::~OutputItemContentWidget()
+    {
+        qDebug() << "deleting " << this;
+    }
+    
     void OutputItemContentWidget::setup(double secs, bool multipleResults, bool firstItem, bool lastItem)
     {      
         setContentsMargins(0, 0, 0, 0);
@@ -260,6 +270,7 @@ namespace Robomongo
 
             _isTreeModeInitialized = true;
 
+
             if ( _bsonTreeHeaderViewState.size() > 0 ) {
                 _bsonTreeview->header()->restoreState(_bsonTreeHeaderViewState);
             }
@@ -364,7 +375,13 @@ namespace Robomongo
     BsonTreeModel *OutputItemContentWidget::configureModel()
     {
         delete _mod;
-        _mod = new BsonTreeModel(_documents, this);
+
+        if (_mod == nullptr) {
+            _mod = new BsonTreeModel(_documents, this);
+        } else {
+            _mod->update(_documents);
+        }
+
         return _mod;
     }
 

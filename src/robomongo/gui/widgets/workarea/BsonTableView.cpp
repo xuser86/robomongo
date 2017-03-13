@@ -4,6 +4,7 @@
 #include <QAction>
 #include <QMenu>
 #include <QKeyEvent>
+#include <QDebug>
 
 #include "robomongo/gui/widgets/workarea/BsonTreeItem.h"
 #include "robomongo/gui/widgets/workarea/BsonHeaderView.h"
@@ -15,6 +16,7 @@ namespace Robomongo
     BsonTableView::BsonTableView(MongoShell *shell, const MongoQueryInfo &queryInfo, QWidget *parent) 
         :BaseClass(parent), _notifier(this, shell, queryInfo)
     {
+        qDebug() << "creating " << this;
 #if defined(Q_OS_MAC)
         setAttribute(Qt::WA_MacShowFocusRect, false);
 #endif
@@ -30,6 +32,11 @@ namespace Robomongo
         VERIFY(connect(this, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(showContextMenu(const QPoint&))));
         
         setHorizontalHeader(new BsonHeaderView(Qt::Horizontal,this));
+    }
+    
+    BsonTableView::~BsonTableView() 
+    {
+        qDebug() << "deleting " << this;
     }
 
     void BsonTableView::keyPressEvent(QKeyEvent *event)

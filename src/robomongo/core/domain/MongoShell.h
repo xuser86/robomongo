@@ -11,6 +11,7 @@ namespace Robomongo
 
     public:
         MongoShell(MongoServer *server, const ScriptInfo &scriptInfo);
+        virtual ~MongoShell();
 
         void open(const std::string &script, const std::string &dbName = std::string());
         void query(int resultIndex, const MongoQueryInfo &info);

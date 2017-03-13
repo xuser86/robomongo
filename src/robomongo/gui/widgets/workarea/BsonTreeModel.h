@@ -15,6 +15,7 @@ namespace Robomongo
         typedef QAbstractItemModel BaseClass;
         static const QIcon &getIcon(BsonTreeItem *item);
         explicit BsonTreeModel(const std::vector<MongoDocumentPtr> &documents, QObject *parent = 0);
+        virtual ~BsonTreeModel();
         QVariant data(const QModelIndex &index, int role) const;
 
         int rowCount(const QModelIndex &parent = QModelIndex()) const;
@@ -31,6 +32,8 @@ namespace Robomongo
         virtual void fetchMore(const QModelIndex &parent);
         virtual bool canFetchMore(const QModelIndex &parent) const;
         virtual bool hasChildren(const QModelIndex &parent = QModelIndex()) const;
+
+        void update(const std::vector<MongoDocumentPtr> &documents);
     protected:
         BsonTreeItem *const _root;
     };

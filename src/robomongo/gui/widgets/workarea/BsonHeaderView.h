@@ -9,6 +9,7 @@ namespace Robomongo
         Q_OBJECT
     public:
         BsonHeaderView(Qt::Orientation orientation, QWidget *parent = Q_NULLPTR);
+        ~BsonHeaderView();
         
     protected: 
         void resizeEvent(QResizeEvent *);
@@ -17,7 +18,7 @@ namespace Robomongo
         int resizeCount = 0;
         bool _defaultHeaderState;
         bool _blockSectionResizedSlot;
-        
+
     private Q_SLOTS:
         void _sectionResized(int logicalIndex, int oldSize, int newSize);
     };

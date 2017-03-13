@@ -1,3 +1,5 @@
+#include <QDebug>
+
 #include "robomongo/gui/widgets/workarea/BsonTreeModel.h"
 
 #include <mongo/client/dbclientinterface.h>
@@ -71,6 +73,8 @@ namespace Robomongo
         BaseClass(parent),
         _root(new BsonTreeItem(this))
     {
+        qDebug() << "creating " << this;
+
         for (int i = 0; i < documents.size(); ++i) {
             MongoDocumentPtr doc = documents[i]; 
             BsonTreeItem *child = new BsonTreeItem(doc->bsonObj(), _root);
@@ -95,6 +99,11 @@ namespace Robomongo
             }
             _root->addChild(child);
         }
+    }
+
+    BsonTreeModel::~BsonTreeModel()
+    {
+        qDebug() << "deleting " << this;
     }
 
     void BsonTreeModel::fetchMore(const QModelIndex &parent)
@@ -125,6 +134,42 @@ namespace Robomongo
             return BsonUtils::isDocument(node->type());
         }
         return true;
+    }
+
+    void BsonTreeModel::update(const std::vector<MongoDocumentPtr> &documents)
+    {
+        qDebug() << "updating " << this;
+
+        beginResetModel();
+
+        _root->removeAllChilds();
+
+        for (int i = 0; i < documents.size(); ++i) {
+            MongoDocumentPtr doc = documents[i];
+            BsonTreeItem *child = new BsonTreeItem(doc->bsonObj(), _root);
+            parseDocument(child, doc->bsonObj(), doc->bsonObj().isArray());
+
+            QString idValue;
+            BsonTreeItem *idItem = child->childByKey("_id");
+            if (idItem) {
+                idValue = idItem->value();
+            }
+
+            child->setKey(QString("(%1) %2").arg(i + 1).arg(idValue));
+
+            int count = BsonUtils::elementsCount(doc->bsonObj());
+
+            if (doc->bsonObj().isArray()) {
+                child->setValue(arrayValue(count));
+                child->setType(mongo::Array);
+            } else {
+                child->setValue(objectValue(count));
+                child->setType(mongo::Object);
+            }
+            _root->addChild(child);
+        }
+
+        endResetModel();
     }
 
     const QIcon &BsonTreeModel::getIcon(BsonTreeItem *item)

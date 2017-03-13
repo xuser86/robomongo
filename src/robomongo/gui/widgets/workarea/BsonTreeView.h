@@ -16,6 +16,7 @@ namespace Robomongo
     public:
         typedef QTreeView BaseClass;
         BsonTreeView(MongoShell *shell, const MongoQueryInfo &queryInfo, QWidget *parent = NULL);
+        ~BsonTreeView();
         virtual QModelIndex selectedIndex() const;
         virtual QModelIndexList selectedIndexes() const;
         void expandNode(const QModelIndex &index);

@@ -1,3 +1,5 @@
+#include <QDebug>
+
 #include "robomongo/core/domain/MongoShell.h"
 
 #include "mongo/scripting/engine.h"
@@ -18,6 +20,12 @@ namespace Robomongo
         _scriptInfo(scriptInfo),
         _server(server)
     {
+        qDebug() << "creating " << this;
+    }
+
+    MongoShell::~MongoShell()
+    {
+        qDebug() << "deleting " << this;
     }
 
     void MongoShell::open(const std::string &script, const std::string &dbName)

@@ -5,6 +5,7 @@ QT_BEGIN_NAMESPACE
 class QSplitter;
 QT_END_NAMESPACE
 
+#include "robomongo/gui/widgets/workarea/BsonHeaderView.h"
 #include "robomongo/core/domain/MongoShellResult.h"
 #include "robomongo/core/Enums.h"
 
@@ -20,6 +21,7 @@ namespace Robomongo
 
     public:
         explicit OutputWidget(QWidget *parent);
+        ~OutputWidget();
 
         void present(MongoShell *shell, const std::vector<MongoShellResult> &documents);
         void updatePart(int partIndex, const MongoQueryInfo &queryInfo, const std::vector<MongoDocumentPtr> &documents);

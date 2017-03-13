@@ -4,6 +4,7 @@
 #include <QAction>
 #include <QMenu>
 #include <QKeyEvent>
+#include <QDebug>
 
 #include "robomongo/gui/widgets/workarea/BsonTreeItem.h"
 
@@ -15,6 +16,8 @@ namespace Robomongo
     BsonTreeView::BsonTreeView(MongoShell *shell, const MongoQueryInfo &queryInfo, QWidget *parent)
         : BaseClass(parent), _notifier(this, shell, queryInfo)
     {
+        qDebug() << "creating " << this;
+        
 #if defined(Q_OS_MAC)
         setAttribute(Qt::WA_MacShowFocusRect, false);
 #endif
@@ -39,6 +42,13 @@ namespace Robomongo
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
         header()->setSectionResizeMode(QHeaderView::Interactive);
 #endif
+    }
+    
+    BsonTreeView::~BsonTreeView()
+    {
+        qDebug() << "deleting " << this;
+        
+        delete header();
     }
 
     void BsonTreeView::showContextMenu(const QPoint &point)

@@ -3,12 +3,15 @@
 #include <QHBoxLayout>
 #include <QSplitter>
 
+#include <QDebug>
+
 #include "robomongo/core/AppRegistry.h"
 #include "robomongo/core/settings/SettingsManager.h"
 #include "robomongo/core/utils/QtUtils.h"
 
 #include "robomongo/gui/widgets/workarea/OutputItemContentWidget.h"
 #include "robomongo/gui/widgets/workarea/ProgressBarPopup.h"
+#include "robomongo/gui/widgets/workarea/BsonHeaderView.h"
 
 namespace Robomongo
 {
@@ -16,6 +19,8 @@ namespace Robomongo
         QFrame(parent),
         _splitter(new QSplitter)
     {
+        qDebug() << "creating " << this;
+        
         _splitter->setOrientation(Qt::Vertical);
         _splitter->setHandleWidth(1);
         _splitter->setContentsMargins(0, 0, 0, 0);
@@ -29,6 +34,10 @@ namespace Robomongo
         _progressBarPopup = new ProgressBarPopup(this);
     }
 
+    OutputWidget::~OutputWidget() {
+        qDebug() << "deleting " << this;
+    }
+    
     void OutputWidget::present(MongoShell *shell, const std::vector<MongoShellResult> &results)
     {
         if (_prevResultsCount > 0) {
@@ -36,7 +45,7 @@ namespace Robomongo
         }
         int const RESULTS_SIZE = _prevResultsCount = results.size();
         bool const multipleResults = (RESULTS_SIZE > 1);
-        
+
         _outputItemContentWidgets.clear();
 
         for (int i = 0; i < RESULTS_SIZE; ++i) {
@@ -53,7 +62,8 @@ namespace Robomongo
             bool const lastItem = (RESULTS_SIZE-1 == i);
 
             OutputItemContentWidget* item = nullptr;
-            if (shellResult.documents().size() > 0) {
+            int documentCount = shellResult.documents().size();
+            if (documentCount > 0) {
                 item = new OutputItemContentWidget(viewMode, shell, QtUtils::toQString(shellResult.type()),
                                                    shellResult.documents(), shellResult.queryInfo(), secs, multipleResults,
                                                    firstItem, lastItem, this);
