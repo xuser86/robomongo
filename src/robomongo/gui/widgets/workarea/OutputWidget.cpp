@@ -40,13 +40,32 @@ namespace Robomongo
     
     void OutputWidget::present(MongoShell *shell, const std::vector<MongoShellResult> &results)
     {
-        if (_prevResultsCount > 0) {
-            clearAllParts();
-        }
-        int const RESULTS_SIZE = _prevResultsCount = results.size();
+        /*if (_prevResultsCount > 0) {
+            _prevViewModes.clear();
+            while (_splitter->count() > 0) {
+                OutputItemContentWidget *widget =  (OutputItemContentWidget *)_splitter->widget(_splitter->count()-1);
+                _prevViewModes.push_back(widget->viewMode());
+                widget->hide();
+                delete widget;
+            }
+        }*/
+        int const RESULTS_SIZE = results.size();
         bool const multipleResults = (RESULTS_SIZE > 1);
 
-        _outputItemContentWidgets.clear();
+        //_outputItemContentWidgets.clear();
+
+        // leave - delete unneeded elements
+        while (RESULTS_SIZE < _outputItemContentWidgets.size()) {
+            OutputItemContentWidget *widget =  (OutputItemContentWidget *)_splitter->widget(_splitter->count()-1);
+            _prevViewModes.pop_back();
+            _outputItemContentWidgets.pop_back();
+
+            widget->hide();
+            delete widget;
+        }
+
+        //_prevResultsCount = ;
+
 
         for (int i = 0; i < RESULTS_SIZE; ++i) {
             MongoShellResult shellResult = results[i];
@@ -63,18 +82,33 @@ namespace Robomongo
 
             OutputItemContentWidget* item = nullptr;
             int documentCount = shellResult.documents().size();
-            if (documentCount > 0) {
-                item = new OutputItemContentWidget(viewMode, shell, QtUtils::toQString(shellResult.type()),
-                                                   shellResult.documents(), shellResult.queryInfo(), secs, multipleResults,
-                                                   firstItem, lastItem, this);
+
+            if ( i+1 > _outputItemContentWidgets.size() ) {
+                if (documentCount > 0) {
+                    item = new OutputItemContentWidget(viewMode, shell, QtUtils::toQString(shellResult.type()),
+                                                       shellResult.documents(), shellResult.queryInfo(), secs, multipleResults,
+                                                       firstItem, lastItem, this);
+                } else {
+                    item = new OutputItemContentWidget(viewMode, shell, QtUtils::toQString(shellResult.response()), secs,
+                                                       multipleResults, firstItem, lastItem, this);
+                }
+                VERIFY(connect(item, SIGNAL(maximizedPart()), this, SLOT(maximizePart())));
+                VERIFY(connect(item, SIGNAL(restoredSize()), this, SLOT(restoreSize())));
+
+                _splitter->addWidget(item);
+                _outputItemContentWidgets.push_back(item);
             } else {
-                item = new OutputItemContentWidget(viewMode, shell, QtUtils::toQString(shellResult.response()), secs,
-                                                   multipleResults, firstItem, lastItem, this);
+                //if (documentCount > 0) {
+                    /*item = new OutputItemContentWidget(viewMode, shell, QtUtils::toQString(shellResult.type()),
+                                                       shellResult.documents(), shellResult.queryInfo(), secs, multipleResults,
+                                                       firstItem, lastItem, this);*/
+
+                    _outputItemContentWidgets.at(i)->updateWidget(viewMode, shell, &shellResult, multipleResults, firstItem, lastItem);
+                /*} else {
+                    item = new OutputItemContentWidget(viewMode, shell, QtUtils::toQString(shellResult.response()), secs,
+                                                       multipleResults, firstItem, lastItem, this);
+                }*/
             }
-            VERIFY(connect(item, SIGNAL(maximizedPart()), this, SLOT(maximizePart())));
-            VERIFY(connect(item, SIGNAL(restoredSize()), this, SLOT(restoreSize())));
-            _splitter->addWidget(item);
-            _outputItemContentWidgets.push_back(item);
         }
         
         tryToMakeAllPartsEqualInSize();
@@ -82,6 +116,8 @@ namespace Robomongo
 
     void OutputWidget::updatePart(int partIndex, const MongoQueryInfo &queryInfo, const std::vector<MongoDocumentPtr> &documents)
     {
+        qDebug() << "partUpdate " << this;
+
         if (partIndex >= _splitter->count())
             return;
 
@@ -189,7 +225,7 @@ namespace Robomongo
     {
         return _splitter->orientation();
     }
-
+/*
     void OutputWidget::clearAllParts()
     {
         _prevViewModes.clear();
@@ -199,7 +235,7 @@ namespace Robomongo
             widget->hide();
             delete widget;
         }
-    }
+    }*/
 
     void OutputWidget::tryToMakeAllPartsEqualInSize()
     {

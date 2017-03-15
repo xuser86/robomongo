@@ -52,10 +52,15 @@ namespace Robomongo
         _viewMode(viewMode)
     {
         qDebug() << "creating " << this;
-        setup(secs, multipleResults, firstItem, lastItem);
+        setupHeader();
+        updateHeader(secs, multipleResults, firstItem, lastItem);
+
+        configureModel();
+        //setupSignals();
+        refreshOutputItem();
     }
 
-    OutputItemContentWidget::OutputItemContentWidget(ViewMode viewMode, MongoShell *shell, const QString &type,
+    OutputItemContentWidget::OutputItemContentWidget(ViewMode viewMode, MongoShell *shell,const QString &type,
                                                      const std::vector<MongoDocumentPtr> &documents, const MongoQueryInfo &queryInfo, 
                                                      double secs, bool multipleResults, bool firstItem, bool lastItem, QWidget *parent) :
         BaseClass(parent),
@@ -83,29 +88,48 @@ namespace Robomongo
         _viewMode(viewMode)
     {
         qDebug() << "creating " << this;
-        setup(secs, multipleResults, firstItem, lastItem);
+        setupHeader();
+        updateHeader(secs, multipleResults, firstItem, lastItem);
+
+        configureModel();
+        refreshOutputItem();
     }
 
     OutputItemContentWidget::~OutputItemContentWidget()
     {
         qDebug() << "deleting " << this;
-    }
-    
-    void OutputItemContentWidget::setup(double secs, bool multipleResults, bool firstItem, bool lastItem)
-    {      
-        setContentsMargins(0, 0, 0, 0);
-        _header = new OutputItemHeaderWidget(this, multipleResults, firstItem, lastItem);
 
-        if (_queryInfo._info.isValid()) {
-            _header->setCollection(QtUtils::toQString(_queryInfo._info._ns.collectionName()));
-            _header->paging()->setBatchSize(_queryInfo._batchSize);
-            _header->paging()->setSkip(_queryInfo._skip);
-            if (!_queryInfo._limit) {
-            _queryInfo._limit = 50;
-            }
+        if (_bsonTable) {
+            _stack->removeWidget(_bsonTable);
+            delete _bsonTable;
+            _bsonTable = NULL;
         }
 
-        _header->setTime(QString("%1 sec.").arg(secs));
+        if (_bsonTreeview) {
+            _stack->removeWidget(_bsonTreeview);
+            delete _bsonTreeview;
+            _bsonTreeview = NULL;
+        }
+
+        if (_textView) {
+            _stack->removeWidget(_textView);
+            delete _textView;
+            _textView = NULL;
+        }
+/*
+        if (_collectionStats) {
+            _stack->removeWidget(_collectionStats);
+            delete _collectionStats;
+            _collectionStats = NULL;
+        }*/
+
+        delete _mod;
+    }
+
+    void OutputItemContentWidget::setupHeader(/*double secs, bool multipleResults, bool firstItem, bool lastItem*/)
+    {      
+        setContentsMargins(0, 0, 0, 0);
+        _header = new OutputItemHeaderWidget(this/*, multipleResults, firstItem, lastItem*/);
 
         QVBoxLayout *layout = new QVBoxLayout();
         layout->setContentsMargins(0, 0, 0, 0);
@@ -114,15 +138,35 @@ namespace Robomongo
         _stack = new QStackedWidget;
         layout->addWidget(_stack);
         setLayout(layout);
-        configureModel();
 
         VERIFY(connect(_header->paging(), SIGNAL(refreshed(int, int)), this, SLOT(refresh(int, int))));
         VERIFY(connect(_header->paging(), SIGNAL(leftClicked(int, int)), this, SLOT(paging_leftClicked(int, int))));
         VERIFY(connect(_header->paging(), SIGNAL(rightClicked(int, int)), this, SLOT(paging_rightClicked(int, int))));
         VERIFY(connect(_header, SIGNAL(maximizedPart()), this, SIGNAL(maximizedPart())));
         VERIFY(connect(_header, SIGNAL(restoredSize()), this, SIGNAL(restoredSize())));
+    }
 
-        refreshOutputItem();
+    void OutputItemContentWidget::updateHeader(double secs, bool multipleResults, bool firstItem, bool lastItem)
+    {
+        if (_queryInfo._info.isValid()) {
+            _header->setCollection(QtUtils::toQString(_queryInfo._info._ns.collectionName()));
+            _header->paging()->setBatchSize(_queryInfo._batchSize);
+            _header->paging()->setSkip(_queryInfo._skip);
+            if (!_queryInfo._limit) {
+                _queryInfo._limit = 50;
+            }
+        }
+
+        _header->setTime(QString("%1 sec.").arg(secs));
+        _header->updateState(
+                    _isCustomModeSupported,
+                    _isTreeModeSupported,
+                    _isTableModeSupported,
+                    _isTextModeSupported,
+                    _outputWidget->getOrientation(),
+                    multipleResults,
+                    firstItem,
+                    lastItem);
     }
 
     void OutputItemContentWidget::paging_leftClicked(int skip, int limit)
@@ -182,6 +226,38 @@ namespace Robomongo
         _shell->query(_outputWidget->resultIndex(this), info);
     }
 
+    // a whole new query just arived
+    void OutputItemContentWidget::updateWidget(ViewMode viewMode, MongoShell *shell, MongoShellResult *shellResult, bool multipleResults, bool firstItem, bool lastItem) {
+        _type = QtUtils::toQString(shellResult->type());
+        _isCustomModeSupported = !_type.isEmpty();
+        _documents = shellResult->documents();
+        _queryInfo = shellResult->queryInfo();
+        _shell = shell; // propably always const
+        _initialSkip = shellResult->queryInfo()._skip;
+        _initialLimit = shellResult->queryInfo()._limit;
+        _viewMode = viewMode;
+
+        _isFirstPartRendered = false;
+        _isTextModeSupported = true;
+
+        if (_documents.size() > 0) {
+            _isTreeModeSupported = true;
+            _isTableModeSupported = true;
+            _isCustomModeSupported = !_type.isEmpty();
+            _text.clear();
+        } else {
+            _isTreeModeSupported = false;
+            _isTableModeSupported = false;
+            _isCustomModeSupported = false;
+            _text = QtUtils::toQString(shellResult->response());
+        }
+
+        updateHeader(shellResult->elapsedMs() / 1000.f, multipleResults, firstItem, lastItem);
+        configureModel();
+        refreshOutputItem();
+    }
+
+    // paging query finishes and result is ready
     void OutputItemContentWidget::update(const MongoQueryInfo &inf, const std::vector<MongoDocumentPtr> &documents)
     {
         _queryInfo = inf;
@@ -192,23 +268,8 @@ namespace Robomongo
 
         _text.clear();
         _isFirstPartRendered = false;
-        markUninitialized();
-
-        if (_bsonTable) {
-            _bsonTableHeaderViewState = _bsonTable->horizontalHeader()->saveState();
-
-            _stack->removeWidget(_bsonTable);
-            delete _bsonTable;
-            _bsonTable = NULL;
-        }
-
-        if (_bsonTreeview) {
-            _bsonTreeHeaderViewState = _bsonTreeview->header()->saveState();
-
-            _stack->removeWidget(_bsonTreeview);
-            delete _bsonTreeview;
-            _bsonTreeview = NULL;
-        }
+        //markUninitialized();
+        _isTextModeInitialized = false;
 
         if (_textView) {
             _stack->removeWidget(_textView);
@@ -269,11 +330,6 @@ namespace Robomongo
                 _bsonTreeview->expand(_mod->index(0, 0, QModelIndex()));
 
             _isTreeModeInitialized = true;
-
-
-            if ( _bsonTreeHeaderViewState.size() > 0 ) {
-                _bsonTreeview->header()->restoreState(_bsonTreeHeaderViewState);
-            }
         }
 
         _stack->setCurrentWidget(_bsonTreeview);
@@ -322,21 +378,9 @@ namespace Robomongo
             _bsonTable->setModel(modp);
             _stack->addWidget(_bsonTable);
             _isTableModeInitialized = true;
-
-            if ( _bsonTableHeaderViewState.size() > 0 ) {
-                _bsonTable->horizontalHeader()->restoreState(_bsonTableHeaderViewState);
-            }
         }
 
         _stack->setCurrentWidget(_bsonTable);
-    }
-
-    void OutputItemContentWidget::markUninitialized()
-    {
-        _isTextModeInitialized = false;
-        _isTreeModeInitialized = false;
-        _isCustomModeInitialized = false;
-        _isTableModeInitialized = false;
     }
 
     void OutputItemContentWidget::applyDockUndockSettings(bool isDocking) const
@@ -374,7 +418,7 @@ namespace Robomongo
     
     BsonTreeModel *OutputItemContentWidget::configureModel()
     {
-        delete _mod;
+        //delete _mod;
 
         if (_mod == nullptr) {
             _mod = new BsonTreeModel(_documents, this);

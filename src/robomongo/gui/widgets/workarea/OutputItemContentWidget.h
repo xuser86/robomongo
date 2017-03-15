@@ -1,11 +1,12 @@
 #pragma once
 
+#include <vector>
 #include <QStackedWidget>
 
 #include "robomongo/core/Core.h"
+#include "robomongo/core/domain/MongoShellResult.h"
 #include "robomongo/core/domain/MongoQueryInfo.h"
 #include "robomongo/core/Enums.h"
-#include <vector>
 #include "robomongo/gui/widgets/workarea/BsonHeaderView.h"
 
 namespace Robomongo
@@ -47,6 +48,7 @@ namespace Robomongo
         void applyDockUndockSettings(bool isDocking) const;
         void toggleOrientation(Qt::Orientation orientation) const;
 
+        void updateWidget(ViewMode viewMode, MongoShell *shell, MongoShellResult *shellResult, bool multipleResults, bool firstItem, bool lastItem);
     Q_SIGNALS:
         void restoredSize();
         void maximizedPart();
@@ -64,9 +66,10 @@ namespace Robomongo
         void paging_leftClicked(int skip, int limit);      
 
     private:
-        void setup(double secs, bool multipleResults, bool firstItem, bool lastItem);
+        void setupHeader();
         FindFrame *configureLogText();
         BsonTreeModel *configureModel();
+        void updateHeader(double secs, bool multipleResults, bool firstItem, bool lastItem);
 
         FindFrame *_textView;
         BsonTreeView *_bsonTreeview;

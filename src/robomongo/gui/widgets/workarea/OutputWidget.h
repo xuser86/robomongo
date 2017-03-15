@@ -44,7 +44,7 @@ namespace Robomongo
         void restoreSize();
         void maximizePart();
     private:
-        void clearAllParts();
+        //void clearAllParts();
         std::vector<ViewMode> _prevViewModes;
         int _prevResultsCount;
         void tryToMakeAllPartsEqualInSize();

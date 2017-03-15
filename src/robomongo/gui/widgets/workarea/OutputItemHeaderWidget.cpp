@@ -29,16 +29,16 @@ namespace
 namespace Robomongo
 {
 
-    OutputItemHeaderWidget::OutputItemHeaderWidget(OutputItemContentWidget *outputItemContentWidget, bool multipleResults, 
-                                                   bool firstItem, bool lastItem, QWidget *parent) :
+    OutputItemHeaderWidget::OutputItemHeaderWidget(OutputItemContentWidget *outputItemContentWidget, /*bool multipleResults,
+                                                   bool firstItem, bool lastItem,*/ QWidget *parent) :
         QFrame(parent),
-        _maxButton(nullptr), _dockUndockButton(nullptr), _maximized(false), _multipleResults(multipleResults), 
-        _firstItem(firstItem), _lastItem(lastItem), _orientation(Qt::Vertical)
+        _maxButton(nullptr), _dockUndockButton(nullptr), _maximized(false), _multipleResults(false),
+        _firstItem(false), _lastItem(false) , _orientation(Qt::Vertical)
     {
         setContentsMargins(5, 0, 0, 0);
 
-        auto const* outputWidget = qobject_cast<OutputWidget*>(outputItemContentWidget->parentWidget());
-        _orientation = outputWidget->getOrientation();
+        /*auto const* outputWidget = qobject_cast<OutputWidget*>(outputItemContentWidget->parentWidget());
+        _orientation = outputWidget->getOrientation();*/
 
         // Text mode button
         _textButton = new QPushButton(this);
@@ -77,15 +77,13 @@ namespace Robomongo
         _customButton->setFlat(true);
         _customButton->setCheckable(true);
 
-        // Create maximize button only if there are multiple results
-        if (_multipleResults) {
-            _maxButton = new QPushButton;
-            _maxButton->setIcon(GuiRegistry::instance().maximizeIcon());
-            _maxButton->setToolTip("Maximize this output result (double-click on result's header)");
-            _maxButton->setFixedSize(18, 18);
-            _maxButton->setFlat(true);
-            VERIFY(connect(_maxButton, SIGNAL(clicked()), this, SLOT(maximizeMinimizePart())));
-        }
+        // Show maximize button only if there are multiple results
+        _maxButton = new QPushButton;
+        _maxButton->setIcon(GuiRegistry::instance().maximizeIcon());
+        _maxButton->setToolTip("Maximize this output result (double-click on result's header)");
+        _maxButton->setFixedSize(18, 18);
+        _maxButton->setFlat(true);
+        VERIFY(connect(_maxButton, SIGNAL(clicked()), this, SLOT(maximizeMinimizePart())));
 
         auto dockWidget = qobject_cast<QueryWidget::CustomDockWidget*>(outputItemContentWidget->parentWidget()->parentWidget());
         auto queryWidget = dockWidget->getParentQueryWidget();
@@ -122,27 +120,11 @@ namespace Robomongo
         layout->addWidget(createVerticalLine());
         layout->addSpacing(2);
 
-        if (outputItemContentWidget->isCustomModeSupported()) {
-            layout->addWidget(_customButton, 0, Qt::AlignRight);
-            _customButton->show();
-        }
-
-        if (outputItemContentWidget->isTreeModeSupported()) {
-            layout->addWidget(_treeButton, 0, Qt::AlignRight);
-            _treeButton->show();
-        }
-
-        if (outputItemContentWidget->isTableModeSupported()) {
-            layout->addWidget(_tableButton, 0, Qt::AlignRight);
-            _tableButton->show();
-        }
-
-        if (outputItemContentWidget->isTextModeSupported())
-            layout->addWidget(_textButton, 0, Qt::AlignRight);
-
-        if (_multipleResults) {
-            layout->addWidget(_maxButton, 0, Qt::AlignRight);
-        }
+        layout->addWidget(_customButton, 0, Qt::AlignRight);
+        layout->addWidget(_treeButton, 0, Qt::AlignRight);
+        layout->addWidget(_tableButton, 0, Qt::AlignRight);
+        layout->addWidget(_textButton, 0, Qt::AlignRight);
+        layout->addWidget(_maxButton, 0, Qt::AlignRight);
 
         layout->addSpacing(3);
         _verticalLine = createVerticalLine();
@@ -152,14 +134,44 @@ namespace Robomongo
 
         setLayout(layout);
 
-        // Update dock/undock button visibility
+        //updateState(multipleResults, firstItem, lastItem);
+    }
+
+    // there is a hidden parameter:
+    void OutputItemHeaderWidget::updateState(
+            /*OutputItemContentWidget *outputItemContentWidget,*/
+            const bool _customModeSupported,
+            const bool _treeModeSupported,
+            const bool _tableModeSupported,
+            const bool _textModeSupported,
+            const Qt::Orientation orientation,
+            const bool multipleResults,
+            const bool firstItem,
+            const bool lastItem
+        ) {
+
+        //auto const* outputWidget = qobject_cast<OutputWidget*>(outputItemContentWidget->parentWidget());
+        _orientation = orientation;
+        _multipleResults = multipleResults;
+        _firstItem = firstItem;
+        _lastItem = lastItem;
+
+        // update display mode buttons visibility
+        _customButton->setVisible(_customModeSupported);
+        _treeButton->setVisible(_treeModeSupported);
+        _tableButton->setVisible(_tableModeSupported);
+        _textButton->setVisible(_textModeSupported);
+        _maxButton->setVisible(_multipleResults);
+
+        // update dock/undock button visibility
         if (_multipleResults) {
             updateDockButtonOnToggleOrientation();
-        }
-        else {
+        } else {
             _verticalLine->setVisible(true);
             _dockUndockButton->setVisible(true);
         }
+
+        toggleOrientation(_orientation);
     }
 
     void OutputItemHeaderWidget::mouseDoubleClickEvent(QMouseEvent *)

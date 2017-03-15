@@ -19,7 +19,7 @@ namespace Robomongo
         Q_OBJECT
 
     public:
-        OutputItemHeaderWidget(OutputItemContentWidget *output, bool multipleResults, bool firstItem, bool lastItem,
+        OutputItemHeaderWidget(OutputItemContentWidget *output, /*bool multipleResults, bool firstItem, bool lastItem,*/
                                QWidget *parent = nullptr);
         PagingWidget *paging() const { return _paging; }
         void showText();
@@ -29,6 +29,8 @@ namespace Robomongo
         void applyDockUndockSettings(bool docking);
         void toggleOrientation(Qt::Orientation orientation);
 
+        //void updateState(OutputItemContentWidget *outputItemContentWidget, const bool multipleResults, const bool firstItem, const bool lastItem);
+        void updateState(const bool _customModeSupported, const bool _treeModeSupported, const bool _tableModeSupported, const bool _textModeSupported, const Qt::Orientation orientation, const bool multipleResults, const bool firstItem, const bool lastItem);
     protected:
         virtual void mouseDoubleClickEvent(QMouseEvent *);
 
